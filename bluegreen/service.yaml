@@ -6,7 +6,7 @@ metadata:
 spec:
   selector:
     app: webapp
-    version: blue   # 🔁 Change this to "green" when switching traffic
+    version: green
   ports:
   - port: 80
     targetPort: 80
