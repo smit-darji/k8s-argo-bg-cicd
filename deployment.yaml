@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: k8s-app
+  namespace: webapps
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: k8s-app
+  template:
+    metadata:
+      labels:
+        app: k8s-app
+    spec:
+      imagePullSecrets:
+      - name: ghcr-secret
+      containers:
+      - name: k8s-app
+        image: smitdarji/k8s:v0.0.103
+        ports:
+        - containerPort: 80
+        resources:
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+          requests:
+            memory: "128Mi"
+            cpu: "250m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: k8s-app-service
+  namespace: webapps
+spec:
+  selector:
+    app: k8s-app
+  ports:
+  - port: 80
+    targetPort: 80
+  type: NodePort

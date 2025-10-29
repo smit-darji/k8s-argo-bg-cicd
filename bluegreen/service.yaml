@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: k8s-app-service
+  namespace: webapps
+spec:
+  selector:
+    app: k8s-app
+    version: blue   # 🔁 Change this to "green" to switch traffic
+  ports:
+  - port: 80
+    targetPort: 80
+  type: NodePort

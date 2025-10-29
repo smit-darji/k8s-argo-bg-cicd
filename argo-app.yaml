@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: k8s-app
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/smit-darji/kubernetes-cicd.git  # 👈 your GitOps repo
+    targetRevision: Master
+    path: .   # 👈 path where deployment.yaml is
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: webapps
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
