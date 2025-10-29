@@ -95,11 +95,9 @@ jobs:
           git push
 
       # 9️⃣ Trigger ArgoCD Sync (optional)
-      - name: Trigger ArgoCD Sync
-        env:
-          ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
-          ARGOCD_AUTH_TOKEN: ${{ secrets.ARGOCD_AUTH_TOKEN }}
+      - name: Trigger ArgoCD Sync (Local)
+        if: always()
         run: |
-          echo "Triggering ArgoCD sync for webapp-bg..."
-          curl -X POST -H "Authorization: Bearer $ARGOCD_AUTH_TOKEN" \
-            -k "$ARGOCD_SERVER/api/v1/applications/webapp-bg/sync"
+          echo "Triggering local ArgoCD sync..."
+          argocd login localhost:8080 --username admin --password ${{ secrets.ARGOCD_PASSWORD }} --insecure --grpc-web
+          argocd app sync webapp-bg --grpc-web
