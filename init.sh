@@ -7,8 +7,8 @@ set -e
 # ============================================================
 
 # --- CONFIG ---
-APP_NAME="my-app"
-APP_NAMESPACE="webapps"
+APP_NAME="k8s-app-bg"
+APP_NAMESPACE="webapps-bg"
 GIT_REPO_URL="https://github.com/<your-username>/<your-repo>.git"   # ✅ Change this
 HELM_PATH="helm"                                                    # path to your chart folder
 ARGOCD_NAMESPACE="argocd"

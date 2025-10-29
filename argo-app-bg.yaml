@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: k8s-app-bluegreen
+  name: k8s-app-bg
   namespace: argocd
 spec:
   project: default
@@ -11,7 +11,7 @@ spec:
     path: bluegreen
   destination:
     server: https://kubernetes.default.svc
-    namespace: webapps
+    namespace: webapps-bg
   syncPolicy:
     automated:
       prune: true

@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: k8s-app-blue
-  namespace: webapps
+  namespace: webapps-bg
 spec:
   replicas: 1
   selector:
@@ -19,13 +19,6 @@ spec:
       - name: ghcr-secret
       containers:
       - name: k8s-app
-        image: smitdarji/k8s:v.b.1.0   # 🔹 Blue version (current stable)
+        image: smitdarji/k8s:v.b.1.0
         ports:
         - containerPort: 80
-        resources:
-          limits:
-            memory: "256Mi"
-            cpu: "500m"
-          requests:
-            memory: "128Mi"
-            cpu: "250m"
