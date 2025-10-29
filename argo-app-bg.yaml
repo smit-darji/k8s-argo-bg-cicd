@@ -6,8 +6,8 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: 'https://github.com/smit-darji/kubernetes-cicd.git'   
-    targetRevision: Master                                        
+    repoURL: 'https://github.com/smit-darji/k8s-argo-bg-cicd.git'
+    targetRevision: Master
     path: bluegreen
   destination:
     server: https://kubernetes.default.svc

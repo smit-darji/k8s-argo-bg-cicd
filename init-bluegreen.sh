@@ -9,7 +9,7 @@ set -e
 APP_NAME="k8s-app-bluegreen"
 APP_NAMESPACE="webapps"
 ARGOCD_NAMESPACE="argocd"
-GIT_REPO_URL="https://github.com/smit-darji/kubernetes-cicd.git"
+GIT_REPO_URL="https://github.com/smit-darji/k8s-argo-bg-cicd.git"
 BRANCH="Master"
 APP_PATH="bluegreen"
 

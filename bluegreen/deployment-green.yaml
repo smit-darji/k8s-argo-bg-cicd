@@ -19,7 +19,7 @@ spec:
       - name: ghcr-secret
       containers:
       - name: k8s-app
-        image: smitdarji/k8s:v1.0.100   # 🔹 Green version (new candidate)
+        image: smitdarji/k8s:v.g.1.0  # 🔹 Green version (new candidate)
         ports:
         - containerPort: 80
         resources:
