@@ -16,21 +16,26 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2️⃣ Determine current Blue/Green active environment
+      # 2️⃣ Detect which color is currently active
       - name: Detect Active Color
         id: detect
         run: |
           CURRENT_COLOR=$(grep 'version:' bluegreen/service.yaml | awk '{print $2}')
-          echo "Current active color: $CURRENT_COLOR"
+          echo "🎯 Current active color: $CURRENT_COLOR"
+
           if [ "$CURRENT_COLOR" = "blue" ]; then
             NEW_COLOR="green"
+            COLOR_TAG="v.g"
           else
             NEW_COLOR="blue"
+            COLOR_TAG="v.b"
           fi
-          echo "Switching traffic to: $NEW_COLOR"
-          echo "NEW_COLOR=$NEW_COLOR" >> $GITHUB_ENV
 
-      # 3️⃣ Get current version tag from the inactive deployment
+          echo "🌀 Switching traffic to: $NEW_COLOR"
+          echo "NEW_COLOR=$NEW_COLOR" >> $GITHUB_ENV
+          echo "COLOR_TAG=$COLOR_TAG" >> $GITHUB_ENV
+
+      # 3️⃣ Determine the current tag from inactive deployment
       - name: Get current version
         id: version
         run: |
@@ -39,24 +44,32 @@ jobs:
           else
             DEPLOY_FILE="bluegreen/deployment-green.yaml"
           fi
+
           CURRENT=$(grep 'image:' $DEPLOY_FILE | awk -F ':' '{print $3}')
           echo "Current tag: $CURRENT"
-          NUM=${CURRENT#v}
-          IFS='.' read -r major minor patch <<< "$NUM"
-          NEW_PATCH=$((patch + 1))
-          NEW_TAG="v${major}.${minor}.${NEW_PATCH}"
-          echo "NEW_TAG=$NEW_TAG" >> $GITHUB_ENV
-          echo "New version: $NEW_TAG"
 
-      # 4️⃣ Login to Docker Hub
+          # If no version found, start from 0
+          if [[ -z "$CURRENT" ]]; then
+            CURRENT="${{ env.COLOR_TAG }}.0.0"
+          fi
+
+          NUM=${CURRENT#v.*.}
+          IFS='.' read -r prefix patch <<< "$NUM"
+          NEW_PATCH=$((patch + 1))
+          NEW_TAG="${{ env.COLOR_TAG }}.${NEW_PATCH}"
+
+          echo "🚀 New version tag: $NEW_TAG"
+          echo "NEW_TAG=$NEW_TAG" >> $GITHUB_ENV
+
+      # 4️⃣ Docker Login
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # 5️⃣ Build and push Docker image
-      - name: Build and push Docker image
+      # 5️⃣ Build and Push Docker Image
+      - name: Build and Push Docker Image
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -65,7 +78,7 @@ jobs:
             smitdarji/k8s:${{ env.NEW_TAG }}
             smitdarji/k8s:latest
 
-      # 6️⃣ Update inactive deployment file
+      # 6️⃣ Update the inactive deployment with new tag
       - name: Update inactive deployment
         run: |
           if [ "${{ env.NEW_COLOR }}" = "blue" ]; then
@@ -74,30 +87,35 @@ jobs:
             DEPLOY_FILE="bluegreen/deployment-green.yaml"
           fi
 
-          echo "Updating $DEPLOY_FILE with tag ${{ env.NEW_TAG }}..."
+          echo "🔧 Updating $DEPLOY_FILE with tag smitdarji/k8s:${{ env.NEW_TAG }}"
           sed -i "s|image: .*|image: smitdarji/k8s:${{ env.NEW_TAG }}|g" $DEPLOY_FILE
           cat $DEPLOY_FILE
 
-      # 7️⃣ Switch service to new color
+      # 7️⃣ Switch service selector to the new color
       - name: Update service selector
         run: |
-          echo "Switching service to ${{ env.NEW_COLOR }}..."
+          echo "🌈 Switching service traffic to ${{ env.NEW_COLOR }}..."
           sed -i "s/version: .*/version: ${{ env.NEW_COLOR }}/g" bluegreen/service.yaml
           cat bluegreen/service.yaml
 
-      # 8️⃣ Commit and push all changes
+      # 8️⃣ Commit and Push all updated files
       - name: Commit & Push
         run: |
           git config --global user.email "actions@github.com"
           git config --global user.name "GitHub Actions"
           git add bluegreen/
-          git commit -m "🚀 Auto deploy to ${{ env.NEW_COLOR }} | Image: smitdarji/k8s:${{ env.NEW_TAG }}" || echo "No changes"
+          git commit -m "🚀 Blue-Green Deploy: Switched to ${{ env.NEW_COLOR }} | Tag: smitdarji/k8s:${{ env.NEW_TAG }}" || echo "No changes to commit"
           git push
 
-      # 9️⃣ Trigger ArgoCD Sync (optional)
+      # 9️⃣ Trigger Local ArgoCD Sync (Manual mode)
       - name: Trigger ArgoCD Sync (Local)
         if: always()
         run: |
-          echo "Triggering local ArgoCD sync..."
-          argocd login localhost:8080 --username admin --password ${{ secrets.ARGOCD_PASSWORD }} --insecure --grpc-web
+          echo "🔄 Triggering local ArgoCD sync..."
+          argocd login localhost:8080 \
+            --username admin \
+            --password "${{ secrets.ARGOCD_PASSWORD }}" \
+            --insecure --grpc-web
           argocd app sync webapp-bg --grpc-web
+          argocd app wait webapp-bg --health --sync --grpc-web
+          echo "✅ ArgoCD Sync Completed!"
