@@ -1,24 +1,24 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: k8s-app-green
-  namespace: webapps-bg
+  name: webapp-green
+  namespace: webapp-bg
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: k8s-app
+      app: webapp
       version: green
   template:
     metadata:
       labels:
-        app: k8s-app
+        app: webapp
         version: green
     spec:
       imagePullSecrets:
       - name: ghcr-secret
       containers:
-      - name: k8s-app
-        image: smitdarji/k8s:v.g.1.0
+      - name: webapp
+        image: smitdarji/k8s:v.g.1.0    # ✅ Green version (new candidate)
         ports:
         - containerPort: 80

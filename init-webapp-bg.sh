@@ -2,36 +2,36 @@
 set -e
 
 # ============================================================
-# 🚀 ArgoCD Blue-Green Project Setup Script
+# 🚀 ArgoCD Blue-Green Project Setup Script for WebApplication
 # Author: Smit Darji
 # ============================================================
 
-APP_NAME="k8s-app-bg"
-APP_NAMESPACE="webapps-bg"
+APP_NAME="webapp-bg"
+APP_NAMESPACE="webapp-bg"
 ARGOCD_NAMESPACE="argocd"
 GIT_REPO_URL="https://github.com/smit-darji/k8s-argo-bg-cicd.git"
 BRANCH="Master"
 APP_PATH="bluegreen"
 
 echo "============================================================"
-echo "🧹 STEP 1: Remove old Blue-Green application (if exists)"
+echo "🧹 STEP 1: Cleaning up old deployments (if any)"
 echo "============================================================"
-kubectl delete application k8s-app-bluegreen -n $ARGOCD_NAMESPACE --ignore-not-found=true
-kubectl delete namespace webapps --ignore-not-found=true
-echo "✅ Old Blue-Green app removed (if it existed)."
+kubectl delete application $APP_NAME -n $ARGOCD_NAMESPACE --ignore-not-found=true
+kubectl delete namespace $APP_NAMESPACE --ignore-not-found=true
+echo "✅ Old ArgoCD app and namespace cleaned."
 
 echo "============================================================"
-echo "📦 STEP 2: Create new namespace for Blue-Green deployment"
+echo "📦 STEP 2: Create fresh namespace"
 echo "============================================================"
 kubectl create namespace $APP_NAMESPACE || echo "Namespace already exists"
 
 echo "============================================================"
-echo "🚀 STEP 3: Create new ArgoCD Blue-Green Application"
+echo "🚀 STEP 3: Deploy Blue-Green Application via ArgoCD"
 echo "============================================================"
-kubectl apply -f argo-app-bg.yaml -n $ARGOCD_NAMESPACE
+kubectl apply -f argo-app-webapp-bg.yaml -n $ARGOCD_NAMESPACE
 
 echo "============================================================"
-echo "✅ Blue-Green ArgoCD App Deployed Successfully!"
-echo "Check ArgoCD UI at: http://localhost:8080"
-echo "Application Name: $APP_NAME"
+echo "✅ Blue-Green WebApplication deployed successfully!"
+echo "🌐 Access ArgoCD at: http://localhost:8080"
+echo "🔑 User: admin"
 echo "============================================================"
