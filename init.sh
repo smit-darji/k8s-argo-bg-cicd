@@ -5,12 +5,12 @@ echo "============================================================"
 echo "🚮 Cleaning Up Kubernetes + ArgoCD + Namespaces"
 # echo "============================================================"
 
-# # Stop and delete any existing minikube cluster
-# minikube stop || true
-# minikube delete || true
+# Stop and delete any existing minikube cluster
+minikube stop || true
+minikube delete || true
 
-# # Remove any leftover kube context
-# kubectl config delete-context minikube || true
+# Remove any leftover kube context
+kubectl config delete-context minikube || true
 
 echo "============================================================"
 echo "🧱 Restarting Fresh Minikube Cluster"
