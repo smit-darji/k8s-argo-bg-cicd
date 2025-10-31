@@ -77,91 +77,37 @@ echo "============================================================"
 echo "🚀 STEP 5: Deploy ArgoCD Application for Blue-Green"
 echo "============================================================"
 kubectl apply -f argo-app-webapp-bg.yaml -n $ARGOCD_NAMESPACE
-sleep 30
+sleep 20
 echo "✅ ArgoCD Application synced."
 
 echo
 echo "============================================================"
-echo "🎯 STEP 6: Create Blue-Green Rollout (15-min Gradual Traffic Shift)"
+echo "🎯 STEP 6: Sync ArgoCD Application"
 echo "============================================================"
-cat <<EOF | kubectl apply -f -
-apiVersion: argoproj.io/v1alpha1
-kind: Rollout
-metadata:
-  name: $APP_NAME
-  namespace: $APP_NAMESPACE
-spec:
-  replicas: 3
-  strategy:
-    blueGreen:
-      activeService: ${APP_NAME}-stable
-      previewService: ${APP_NAME}-preview
-      autoPromotionEnabled: true
-      autoPromotionSeconds: 900  # 15 min = 900 seconds
-  selector:
-    matchLabels:
-      app: $APP_NAME
-  template:
-    metadata:
-      labels:
-        app: $APP_NAME
-    spec:
-      containers:
-      - name: $APP_NAME
-        image: smitdarji/k8s:v1.0.0
-        ports:
-        - containerPort: 80
-EOF
+argocd app sync $APP_NAME -n $ARGOCD_NAMESPACE || echo "ℹ️ Ensure ArgoCD CLI is configured."
+sleep 10
+echo "✅ Application synced successfully from repo path: $APP_PATH"
 
 echo
 echo "============================================================"
-echo "🌐 STEP 7: Create Services (Stable & Preview)"
+echo "🌐 STEP 7: Check Rollout Status"
 echo "============================================================"
-cat <<EOF | kubectl apply -f -
-apiVersion: v1
-kind: Service
-metadata:
-  name: ${APP_NAME}-stable
-  namespace: $APP_NAMESPACE
-spec:
-  type: NodePort
-  selector:
-    app: $APP_NAME
-  ports:
-    - port: 80
-      targetPort: 80
-      protocol: TCP
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: ${APP_NAME}-preview
-  namespace: $APP_NAMESPACE
-spec:
-  type: NodePort
-  selector:
-    app: $APP_NAME
-  ports:
-    - port: 80
-      targetPort: 80
-      protocol: TCP
-EOF
+kubectl argo rollouts get rollout $APP_NAME -n $APP_NAMESPACE --watch &
+
+sleep 15
+echo
+echo "============================================================"
+echo "🌍 STEP 8: Get Application URLs"
+echo "============================================================"
+STABLE_PORT=$(kubectl get svc ${APP_NAME}-stable -n $APP_NAMESPACE -o jsonpath='{.spec.ports[0].nodePort}' 2>/dev/null || echo "N/A")
+PREVIEW_PORT=$(kubectl get svc ${APP_NAME}-preview -n $APP_NAMESPACE -o jsonpath='{.spec.ports[0].nodePort}' 2>/dev/null || echo "N/A")
+NODE_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[0].address}')
+
+echo "✅ Blue-Green Deployment Active!"
+echo "🔵 Stable URL : http://$NODE_IP:$STABLE_PORT"
+echo "🟢 Preview URL: http://$NODE_IP:$PREVIEW_PORT"
 
 echo
 echo "============================================================"
-echo "🧭 STEP 8: Install Argo Rollouts CLI (if missing)"
+echo "✅ Deployment setup complete."
 echo "============================================================"
-if ! command -v kubectl-argo-rollouts &> /dev/null; then
-  echo "⚙️  Installing Argo Rollouts CLI..."
-  curl -LO https://github.com/argoproj/argo-rollouts/releases/latest/download/kubectl-argo-rollouts-linux-amd64
-  sudo install -m 755 kubectl-argo-rollouts-linux-amd64 /usr/local/bin/kubectl-argo-rollouts
-  rm -f kubectl-argo-rollouts-linux-amd64
-else
-  echo "✅ CLI already installed."
-fi
-
-echo
-echo "============================================================"
-echo "📊 STEP 9: Monitor Rollout Gradual Promotion"
-echo "============================================================"
-kubectl-argo-rollouts get rollout $APP_NAME -n $APP_NAMESPACE --watch

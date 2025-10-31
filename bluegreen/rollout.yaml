@@ -9,29 +9,31 @@ spec:
   selector:
     matchLabels:
       app: webapp
-  template:
-    metadata:
-      labels:
-        app: webapp
-        version: green  # 🟢 new version
-    spec:
-      imagePullSecrets:
-      - name: ghcr-secret
-      containers:
-      - name: webapp
-        image: smitdarji/k8s:v.g.1.0
-        ports:
-        - containerPort: 80
-
   strategy:
     canary:
       canaryService: webapp-bg-canary
       stableService: webapp-bg-stable
       trafficRouting:
-        nginx: {}         # ✅ use NGINX ingress controller for traffic shifting
+        nginx: {}
       steps:
         - setWeight: 25
-        - pause: {duration: 5m}
+          pause:
+            duration: 3m
         - setWeight: 50
-        - pause: {duration: 5m}
+          pause:
+            duration: 12m
         - setWeight: 100
+  template:
+    metadata:
+      labels:
+        app: webapp
+        version: green
+    spec:
+      containers:
+        - name: webapp
+          image: smitdarji/k8s:v.g.1.0   # ✅ Update this tag for each deployment
+          ports:
+            - containerPort: 80
+              protocol: TCP
+      imagePullSecrets:
+        - name: ghcr-secret
