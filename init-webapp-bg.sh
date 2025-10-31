@@ -100,16 +100,30 @@ echo
 echo "============================================================"
 echo "🌍 STEP 7: Get Application URLs"
 echo "============================================================"
-STABLE_PORT=$(kubectl get svc ${APP_NAME}-stable -n $APP_NAMESPACE -o jsonpath='{.spec.ports[0].nodePort}' 2>/dev/null || echo "N/A")
-PREVIEW_PORT=$(kubectl get svc ${APP_NAME}-preview -n $APP_NAMESPACE -o jsonpath='{.spec.ports[0].nodePort}' 2>/dev/null || echo "N/A")
+# Get Node IP (Minikube or K8s cluster)
 NODE_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[0].address}')
+
+# Try to fetch NodePorts properly for both services
+STABLE_PORT=$(kubectl get svc ${APP_NAME}-stable -n $APP_NAMESPACE -o jsonpath='{.spec.ports[0].nodePort}' 2>/dev/null)
+PREVIEW_PORT=$(kubectl get svc ${APP_NAME}-preview -n $APP_NAMESPACE -o jsonpath='{.spec.ports[0].nodePort}' 2>/dev/null)
+
+# If PREVIEW_PORT is empty (N/A), fix by patching it to NodePort
+if [[ -z "$PREVIEW_PORT" ]]; then
+  echo "⚙️  Preview service missing NodePort — patching..."
+  kubectl patch svc ${APP_NAME}-preview -n $APP_NAMESPACE -p '{"spec": {"type": "NodePort"}}' >/dev/null 2>&1
+  sleep 3
+  PREVIEW_PORT=$(kubectl get svc ${APP_NAME}-preview -n $APP_NAMESPACE -o jsonpath='{.spec.ports[0].nodePort}' 2>/dev/null)
+fi
+
+# If still empty, mark as unavailable
+if [[ -z "$PREVIEW_PORT" ]]; then
+  PREVIEW_PORT="Unavailable"
+fi
 
 echo
 echo "✅ Blue-Green Deployment Active!"
 echo "🔵 Stable URL : http://$NODE_IP:$STABLE_PORT"
 echo "🟢 Preview URL: http://$NODE_IP:$PREVIEW_PORT"
-
-
 echo
 echo "============================================================"
 echo "🌐 STEP 8: Check Rollout Status"

@@ -4,16 +4,16 @@ metadata:
   name: webapp-bg-ingress
   namespace: webapp-bg
   annotations:
-    kubernetes.io/ingress.class: "nginx"
+    kubernetes.io/ingress.class: nginx
 spec:
   rules:
-    - host: webapp.local
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: webapp-bg-stable
-                port:
-                  number: 80
+  - host: webapp-bg.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: webapp-bg-stable
+            port:
+              number: 80

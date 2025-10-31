@@ -9,6 +9,13 @@ spec:
   selector:
     matchLabels:
       app: webapp-bg
+  strategy:
+    blueGreen:
+      activeService: webapp-bg-stable        # ✅ Main live traffic service
+      previewService: webapp-bg-canary       # ✅ Preview service for validation
+      autoPromotionEnabled: false            # Disable instant promotion
+      autoPromotionSeconds: 300              # ⏳ Wait 5 minutes before switching
+      scaleDownDelaySeconds: 60              # Keep old pods for rollback
   template:
     metadata:
       labels:
@@ -16,14 +23,19 @@ spec:
     spec:
       containers:
       - name: webapp-bg
-        image: smitdarji/k8s:v1.0.0   # ✅ update tag when releasing new version
+        image: smitdarji/k8s:v.g.1.5         # 👈 Replace with your image tag
+        imagePullPolicy: Always
         ports:
         - containerPort: 80
-
-  strategy:
-    blueGreen:
-      activeService: webapp-bg-stable
-      previewService: webapp-bg-canary
-      autoPromotionEnabled: false         # 🚫 don't switch immediately
-      autoPromotionSeconds: 900           # ⏳ wait 15 minutes before auto-promote
-      scaleDownDelaySeconds: 30           # optional cleanup delay for old pods
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 10
