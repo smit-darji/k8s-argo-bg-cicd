@@ -4,36 +4,26 @@ metadata:
   name: webapp-bg
   namespace: webapp-bg
 spec:
-  replicas: 2
+  replicas: 3
   revisionHistoryLimit: 2
   selector:
     matchLabels:
-      app: webapp
-  strategy:
-    canary:
-      canaryService: webapp-bg-canary
-      stableService: webapp-bg-stable
-      trafficRouting:
-        nginx: {}
-      steps:
-        - setWeight: 25
-          pause:
-            duration: 3m
-        - setWeight: 50
-          pause:
-            duration: 12m
-        - setWeight: 100
+      app: webapp-bg
   template:
     metadata:
       labels:
-        app: webapp
-        version: green
+        app: webapp-bg
     spec:
       containers:
-        - name: webapp
-          image: smitdarji/k8s:v.g.1.0   # ✅ Update this tag for each deployment
-          ports:
-            - containerPort: 80
-              protocol: TCP
-      imagePullSecrets:
-        - name: ghcr-secret
+      - name: webapp-bg
+        image: smitdarji/k8s:v1.0.0   # ✅ update tag when releasing new version
+        ports:
+        - containerPort: 80
+
+  strategy:
+    blueGreen:
+      activeService: webapp-bg-stable
+      previewService: webapp-bg-canary
+      autoPromotionEnabled: false         # 🚫 don't switch immediately
+      autoPromotionSeconds: 900           # ⏳ wait 15 minutes before auto-promote
+      scaleDownDelaySeconds: 30           # optional cleanup delay for old pods
