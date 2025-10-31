@@ -22,6 +22,7 @@ spec:
   type: NodePort
   selector:
     app: webapp
+    version: blue
   ports:
     - name: http
       port: 80
