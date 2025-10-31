@@ -92,7 +92,7 @@ echo
 echo "============================================================"
 echo "🌐 STEP 7: Check Rollout Status"
 echo "============================================================"
-kubectl argo rollouts get rollout $APP_NAME -n $APP_NAMESPACE --watch &
+# kubectl argo rollouts get rollout $APP_NAME -n $APP_NAMESPACE --watch &
 
 sleep 15
 echo
