@@ -19,7 +19,7 @@ spec:
       - name: ghcr-secret
       containers:
       - name: webapp
-        image: smitdarji/k8s:v.g.1.2    # 🟢 Green version image
+        image: smitdarji/k8s:v.g.1.0   # 🟢 Green version image
         ports:
         - containerPort: 80
 
@@ -31,9 +31,8 @@ spec:
         smi: {}       # You can change this to nginx: {} if using NGINX ingress
       steps:
       - setWeight: 25
-      - pause: { duration: 5m }
+      - pause: {duration: 5m}
       - setWeight: 50
-      - pause: { duration: 5m }
-      - setWeight: 75
-      - pause: { duration: 5m }
+      - pause: {duration: 5m}
       - setWeight: 100
+

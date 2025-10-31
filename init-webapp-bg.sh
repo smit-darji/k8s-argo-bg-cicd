@@ -26,15 +26,27 @@ echo "============================================================"
 kubectl create namespace $APP_NAMESPACE || echo "Namespace already exists"
 
 echo "============================================================"
-echo "🚀 STEP 3: Deploy Blue-Green Application via ArgoCD"
+echo "🧩 STEP 3: Verify Argo Rollouts installation"
+echo "============================================================"
+if ! kubectl get crd rollouts.argoproj.io >/dev/null 2>&1; then
+  echo "⚙️  Installing Argo Rollouts CRDs and Controller..."
+  kubectl apply -n $ARGOCD_NAMESPACE -f https://github.com/argoproj/argo-rollouts/releases/latest/download/install.yaml
+  echo "⏳ Waiting for Argo Rollouts controller to be ready..."
+  sleep 20
+else
+  echo "✅ Argo Rollouts already installed."
+fi
+
+echo "============================================================"
+echo "🚀 STEP 4: Deploy Blue-Green Application via ArgoCD"
 echo "============================================================"
 kubectl apply -f argo-app-webapp-bg.yaml -n $ARGOCD_NAMESPACE
 
 echo "⏳ Waiting for ArgoCD to sync resources..."
-sleep 20
+sleep 30
 
 echo "============================================================"
-echo "🎯 STEP 4: Apply Rollout (Gradual 15-minute traffic shift)"
+echo "🎯 STEP 5: Apply Rollout (Gradual 15-minute traffic shift)"
 echo "============================================================"
 kubectl apply -f bluegreen/service.yaml -n $APP_NAMESPACE
 kubectl apply -f bluegreen/rollout.yaml -n $APP_NAMESPACE
@@ -42,4 +54,12 @@ kubectl apply -f bluegreen/rollout.yaml -n $APP_NAMESPACE
 echo "============================================================"
 echo "✅ Rollout initiated. Monitoring progress..."
 echo "============================================================"
-kubectl argo rollouts get rollout $APP_NAME -n $APP_NAMESPACE --watch
+
+# Check if Argo Rollouts CLI is installed
+if ! command -v kubectl-argo-rollouts &> /dev/null; then
+  echo "⚙️  Installing Argo Rollouts CLI..."
+  curl -LO https://github.com/argoproj/argo-rollouts/releases/latest/download/kubectl-argo-rollouts-linux-amd64
+  sudo install -m 755 kubectl-argo-rollouts-linux-amd64 /usr/local/bin/kubectl-argo-rollouts
+fi
+
+kubectl-argo-rollouts get rollout $APP_NAME -n $APP_NAMESPACE --watch
