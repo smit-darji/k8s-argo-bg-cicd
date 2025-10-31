@@ -19,6 +19,6 @@ spec:
       - name: ghcr-secret
       containers:
       - name: webapp
-        image: smitdarji/k8s:v.g.1.2
+        image: smitdarji/k8s:v.g.1.3
         ports:
         - containerPort: 80
