@@ -13,24 +13,25 @@ spec:
     metadata:
       labels:
         app: webapp
-        version: green   # 🟢 Target version
+        version: green  # 🟢 new version
     spec:
       imagePullSecrets:
       - name: ghcr-secret
       containers:
       - name: webapp
-        image: smitdarji/k8s:v.g.1.2
+        image: smitdarji/k8s:v.g.1.0
         ports:
         - containerPort: 80
+
   strategy:
     canary:
       canaryService: webapp-bg-canary
       stableService: webapp-bg-stable
       trafficRouting:
-        smi: {}  # or nginx: {} if ingress-based
+        nginx: {}         # ✅ use NGINX ingress controller for traffic shifting
       steps:
         - setWeight: 25
-        - pause: { duration: 5m }
+        - pause: {duration: 5m}
         - setWeight: 50
-        - pause: { duration: 5m }
+        - pause: {duration: 5m}
         - setWeight: 100
