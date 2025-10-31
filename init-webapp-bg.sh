@@ -32,7 +32,7 @@ if ! kubectl get crd rollouts.argoproj.io >/dev/null 2>&1; then
   echo "⚙️  Installing Argo Rollouts CRDs and Controller..."
   kubectl apply -n $ARGOCD_NAMESPACE -f https://github.com/argoproj/argo-rollouts/releases/latest/download/install.yaml
   echo "⏳ Waiting for Argo Rollouts controller to be ready..."
-  sleep 20
+  sleep 25
 else
   echo "✅ Argo Rollouts already installed."
 fi
@@ -52,14 +52,24 @@ kubectl apply -f bluegreen/service.yaml -n $APP_NAMESPACE
 kubectl apply -f bluegreen/rollout.yaml -n $APP_NAMESPACE
 
 echo "============================================================"
-echo "✅ Rollout initiated. Monitoring progress..."
+echo "🌐 STEP 6: Expose Service URLs (NodePort)"
+echo "============================================================"
+STABLE_URL=$(minikube service webapp-bg-stable -n $APP_NAMESPACE --url 2>/dev/null || true)
+CANARY_URL=$(minikube service webapp-bg-canary -n $APP_NAMESPACE --url 2>/dev/null || true)
+
+echo "✅ Stable Service URL: ${STABLE_URL:-Not available}"
+echo "✅ Canary Service URL: ${CANARY_URL:-Not available}"
+
+echo "============================================================"
+echo "✅ STEP 7: Rollout Monitoring"
 echo "============================================================"
 
-# Check if Argo Rollouts CLI is installed
+# Ensure Argo Rollouts CLI is installed
 if ! command -v kubectl-argo-rollouts &> /dev/null; then
   echo "⚙️  Installing Argo Rollouts CLI..."
   curl -LO https://github.com/argoproj/argo-rollouts/releases/latest/download/kubectl-argo-rollouts-linux-amd64
   sudo install -m 755 kubectl-argo-rollouts-linux-amd64 /usr/local/bin/kubectl-argo-rollouts
 fi
 
+echo "⏳ Watching rollout status..."
 kubectl-argo-rollouts get rollout $APP_NAME -n $APP_NAMESPACE --watch

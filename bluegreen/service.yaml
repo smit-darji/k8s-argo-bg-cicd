@@ -6,10 +6,12 @@ metadata:
 spec:
   selector:
     app: webapp
+    version: blue
   ports:
-  - port: 80
-    targetPort: 80
-  type: ClusterIP
+    - port: 80
+      targetPort: 80
+      nodePort: 30080
+  type: NodePort
 ---
 apiVersion: v1
 kind: Service
@@ -19,7 +21,9 @@ metadata:
 spec:
   selector:
     app: webapp
+    version: green
   ports:
-  - port: 80
-    targetPort: 80
-  type: ClusterIP
+    - port: 80
+      targetPort: 80
+      nodePort: 30081
+  type: NodePort
