@@ -2,7 +2,7 @@
 set -e
 
 # ============================================================
-# 🚀 ArgoCD Blue-Green Deployment Setup Script for Web Application
+# 🚀 ArgoCD Blue-Green Deployment Setup Script (with 15-min gradual switch)
 # Author: Smit Darji
 # ============================================================
 
@@ -44,7 +44,7 @@ echo
 echo "============================================================"
 echo "🛠️  STEP 4: Fix Argo Rollouts RBAC (if needed)"
 echo "============================================================"
-# This prevents "forbidden: cannot get configmaps" error
+# Prevents "forbidden: cannot get configmaps" error
 cat <<EOF | kubectl apply -f -
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -55,7 +55,6 @@ rules:
   - apiGroups: [""]
     resources: ["configmaps"]
     verbs: ["get", "list", "watch"]
-
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -75,33 +74,82 @@ echo "✅ Fixed Argo Rollouts RBAC access."
 
 echo
 echo "============================================================"
-echo "🚀 STEP 5: Deploy Blue-Green Application via ArgoCD"
+echo "🚀 STEP 5: Deploy ArgoCD Application for Blue-Green"
 echo "============================================================"
 kubectl apply -f argo-app-webapp-bg.yaml -n $ARGOCD_NAMESPACE
-
-echo "⏳ Waiting for ArgoCD to sync resources..."
 sleep 30
+echo "✅ ArgoCD Application synced."
 
 echo
 echo "============================================================"
-echo "🎯 STEP 6: Apply Rollout and Services (Gradual 15-min traffic shift)"
+echo "🎯 STEP 6: Create Blue-Green Rollout (15-min Gradual Traffic Shift)"
 echo "============================================================"
-kubectl apply -f bluegreen/service.yaml -n $APP_NAMESPACE
-kubectl apply -f bluegreen/rollout.yaml -n $APP_NAMESPACE
+cat <<EOF | kubectl apply -f -
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: $APP_NAME
+  namespace: $APP_NAMESPACE
+spec:
+  replicas: 3
+  strategy:
+    blueGreen:
+      activeService: ${APP_NAME}-stable
+      previewService: ${APP_NAME}-preview
+      autoPromotionEnabled: true
+      autoPromotionSeconds: 900  # 15 min = 900 seconds
+  selector:
+    matchLabels:
+      app: $APP_NAME
+  template:
+    metadata:
+      labels:
+        app: $APP_NAME
+    spec:
+      containers:
+      - name: $APP_NAME
+        image: smitdarji/k8s:v1.0.0
+        ports:
+        - containerPort: 80
+EOF
 
 echo
 echo "============================================================"
-echo "🌐 STEP 7: Expose Service URLs (NodePort)"
+echo "🌐 STEP 7: Create Services (Stable & Preview)"
 echo "============================================================"
-STABLE_URL=$(minikube service webapp-bg-stable -n $APP_NAMESPACE --url 2>/dev/null || true)
-CANARY_URL=$(minikube service webapp-bg-canary -n $APP_NAMESPACE --url 2>/dev/null || true)
-
-echo "✅ Stable Service URL: ${STABLE_URL:-Not available}"
-echo "✅ Canary Service URL: ${CANARY_URL:-Not available}"
+cat <<EOF | kubectl apply -f -
+apiVersion: v1
+kind: Service
+metadata:
+  name: ${APP_NAME}-stable
+  namespace: $APP_NAMESPACE
+spec:
+  type: NodePort
+  selector:
+    app: $APP_NAME
+  ports:
+    - port: 80
+      targetPort: 80
+      protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ${APP_NAME}-preview
+  namespace: $APP_NAMESPACE
+spec:
+  type: NodePort
+  selector:
+    app: $APP_NAME
+  ports:
+    - port: 80
+      targetPort: 80
+      protocol: TCP
+EOF
 
 echo
 echo "============================================================"
-echo "🧭 STEP 8: Install Argo Rollouts CLI (if not installed)"
+echo "🧭 STEP 8: Install Argo Rollouts CLI (if missing)"
 echo "============================================================"
 if ! command -v kubectl-argo-rollouts &> /dev/null; then
   echo "⚙️  Installing Argo Rollouts CLI..."
@@ -114,6 +162,6 @@ fi
 
 echo
 echo "============================================================"
-echo "📊 STEP 9: Monitor Rollout Status"
+echo "📊 STEP 9: Monitor Rollout Gradual Promotion"
 echo "============================================================"
 kubectl-argo-rollouts get rollout $APP_NAME -n $APP_NAMESPACE --watch
