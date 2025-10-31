@@ -44,7 +44,6 @@ echo
 echo "============================================================"
 echo "🛠️  STEP 4: Fix Argo Rollouts RBAC (if needed)"
 echo "============================================================"
-# Prevents "forbidden: cannot get configmaps" error
 cat <<EOF | kubectl apply -f -
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -78,34 +77,44 @@ echo "🚀 STEP 5: Deploy ArgoCD Application for Blue-Green"
 echo "============================================================"
 kubectl apply -f argo-app-webapp-bg.yaml -n $ARGOCD_NAMESPACE
 sleep 20
-echo "✅ ArgoCD Application synced."
+echo "✅ ArgoCD Application created."
 
 echo
 echo "============================================================"
 echo "🎯 STEP 6: Sync ArgoCD Application"
 echo "============================================================"
-argocd app sync $APP_NAME -n $ARGOCD_NAMESPACE || echo "ℹ️ Ensure ArgoCD CLI is configured."
-sleep 10
-echo "✅ Application synced successfully from repo path: $APP_PATH"
+
+if command -v argocd &> /dev/null; then
+  echo "🔄 Syncing ArgoCD Application..."
+  if argocd app sync $APP_NAME --grpc-web; then
+    echo "✅ Application synced successfully from repo path: $APP_PATH"
+  else
+    echo "⚠️ ArgoCD sync failed — check login credentials or repo access."
+  fi
+else
+  echo "ℹ️ ArgoCD CLI not found. Skipping manual sync (it will auto-sync via UI if enabled)."
+fi
+
 
 echo
 echo "============================================================"
-echo "🌐 STEP 7: Check Rollout Status"
-echo "============================================================"
-# kubectl argo rollouts get rollout $APP_NAME -n $APP_NAMESPACE --watch &
-
-sleep 15
-echo
-echo "============================================================"
-echo "🌍 STEP 8: Get Application URLs"
+echo "🌍 STEP 7: Get Application URLs"
 echo "============================================================"
 STABLE_PORT=$(kubectl get svc ${APP_NAME}-stable -n $APP_NAMESPACE -o jsonpath='{.spec.ports[0].nodePort}' 2>/dev/null || echo "N/A")
 PREVIEW_PORT=$(kubectl get svc ${APP_NAME}-preview -n $APP_NAMESPACE -o jsonpath='{.spec.ports[0].nodePort}' 2>/dev/null || echo "N/A")
 NODE_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[0].address}')
 
+echo
 echo "✅ Blue-Green Deployment Active!"
 echo "🔵 Stable URL : http://$NODE_IP:$STABLE_PORT"
 echo "🟢 Preview URL: http://$NODE_IP:$PREVIEW_PORT"
+
+
+echo
+echo "============================================================"
+echo "🌐 STEP 8: Check Rollout Status"
+echo "============================================================"
+kubectl argo rollouts get rollout $APP_NAME -n $APP_NAMESPACE || echo "ℹ️ Rollout not found yet — wait a few seconds."
 
 echo
 echo "============================================================"
