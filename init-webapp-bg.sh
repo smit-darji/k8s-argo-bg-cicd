@@ -30,8 +30,16 @@ echo "🚀 STEP 3: Deploy Blue-Green Application via ArgoCD"
 echo "============================================================"
 kubectl apply -f argo-app-webapp-bg.yaml -n $ARGOCD_NAMESPACE
 
+echo "⏳ Waiting for ArgoCD to sync resources..."
+sleep 20
+
 echo "============================================================"
-echo "✅ Blue-Green WebApplication deployed successfully!"
-echo "🌐 Access ArgoCD at: http://localhost:8080"
-echo "🔑 User: admin"
+echo "🎯 STEP 4: Apply Rollout (Gradual 15-minute traffic shift)"
 echo "============================================================"
+kubectl apply -f bluegreen/service.yaml -n $APP_NAMESPACE
+kubectl apply -f bluegreen/rollout.yaml -n $APP_NAMESPACE
+
+echo "============================================================"
+echo "✅ Rollout initiated. Monitoring progress..."
+echo "============================================================"
+kubectl argo rollouts get rollout $APP_NAME -n $APP_NAMESPACE --watch

@@ -1,0 +1,39 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: webapp-bg
+  namespace: webapp-bg
+spec:
+  replicas: 2
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app: webapp
+  template:
+    metadata:
+      labels:
+        app: webapp
+        version: green     # ✅ Target: new green version
+    spec:
+      imagePullSecrets:
+      - name: ghcr-secret
+      containers:
+      - name: webapp
+        image: smitdarji/k8s:v.g.1.2    # 🟢 Green version image
+        ports:
+        - containerPort: 80
+
+  strategy:
+    canary:
+      canaryService: webapp-bg-canary
+      stableService: webapp-bg-stable
+      trafficRouting:
+        smi: {}       # You can change this to nginx: {} if using NGINX ingress
+      steps:
+      - setWeight: 25
+      - pause: { duration: 5m }
+      - setWeight: 50
+      - pause: { duration: 5m }
+      - setWeight: 75
+      - pause: { duration: 5m }
+      - setWeight: 100
