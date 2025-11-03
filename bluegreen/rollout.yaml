@@ -19,7 +19,7 @@ spec:
     metadata:
       labels:
         app: webapp
-        version: blue  # 👈 dynamically updated by CI
+        version: green
     spec:
       containers:
         - name: webapp
