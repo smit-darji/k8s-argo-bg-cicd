@@ -17,6 +17,6 @@ spec:
     spec:
       containers:
         - name: webapp
-          image: smitdarji/k8s:v.g.1.1
+          image: smitdarji/k8s:v.gg.1.0
           ports:
             - containerPort: 80
