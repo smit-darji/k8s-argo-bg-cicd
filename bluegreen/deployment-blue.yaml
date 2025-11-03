@@ -15,10 +15,8 @@ spec:
         app: webapp
         version: blue
     spec:
-      imagePullSecrets:
-      - name: ghcr-secret
       containers:
-      - name: webapp
-        image: smitdarji/k8s:v.b.1.1
-        ports:
-        - containerPort: 80
+        - name: webapp
+          image: smitdarji/k8s:v.b.1.0
+          ports:
+            - containerPort: 80

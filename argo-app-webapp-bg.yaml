@@ -6,7 +6,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: 'https://github.com/smit-darji/k8s-argo-bg-cicd.git'
+    repoURL: https://github.com/smit-darji/k8s-argo-bg-cicd.git
     targetRevision: Master
     path: bluegreen
   destination:
@@ -18,29 +18,3 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-      - ApplyOutOfSyncOnly=true
----
-# ✅ Ensure Argo Rollouts controller has access to configmaps
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: argo-rollouts-config-access
-  namespace: argocd
-rules:
-  - apiGroups: [""]
-    resources: ["configmaps"]
-    verbs: ["get", "list", "watch"]
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: argo-rollouts-config-access
-  namespace: argocd
-subjects:
-  - kind: ServiceAccount
-    name: argo-rollouts
-    namespace: argocd
-roleRef:
-  kind: Role
-  name: argo-rollouts-config-access
-  apiGroup: rbac.authorization.k8s.io

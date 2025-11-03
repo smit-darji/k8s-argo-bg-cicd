@@ -4,38 +4,24 @@ metadata:
   name: webapp-bg
   namespace: webapp-bg
 spec:
-  replicas: 3
+  replicas: 2
   revisionHistoryLimit: 2
   selector:
     matchLabels:
-      app: webapp-bg
+      app: webapp
   strategy:
     blueGreen:
       activeService: webapp-bg-stable
       previewService: webapp-bg-preview
-      autoPromotionEnabled: false
-      autoPromotionSeconds: 300
-      scaleDownDelaySeconds: 60
+      autoPromotionEnabled: true
   template:
     metadata:
       labels:
-        app: webapp-bg
+        app: webapp
+        version: green
     spec:
       containers:
-      - name: webapp-bg
-        image: smitdarji/k8s:v.g.1.5    # 🟢 update tag for new rollout
-        imagePullPolicy: Always
-        ports:
-          - containerPort: 80
-        readinessProbe:
-          httpGet:
-            path: /
-            port: 80
-          initialDelaySeconds: 5
-          periodSeconds: 5
-        livenessProbe:
-          httpGet:
-            path: /
-            port: 80
-          initialDelaySeconds: 10
-          periodSeconds: 10
+        - name: webapp
+          image: smitdarji/k8s:v.g.1.0
+          ports:
+            - containerPort: 80
