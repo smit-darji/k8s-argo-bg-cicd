@@ -7,13 +7,13 @@ metadata:
     kubernetes.io/ingress.class: nginx
 spec:
   rules:
-  - host: webapp-bg.local
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: webapp-bg-stable
-            port:
-              number: 80
+    - host: webapp-bg.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: webapp-bg-stable
+                port:
+                  number: 80

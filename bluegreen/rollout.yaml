@@ -11,11 +11,11 @@ spec:
       app: webapp-bg
   strategy:
     blueGreen:
-      activeService: webapp-bg-stable        # ✅ Main live traffic service
-      previewService: webapp-bg-canary       # ✅ Preview service for validation
-      autoPromotionEnabled: false            # Disable instant promotion
-      autoPromotionSeconds: 300              # ⏳ Wait 5 minutes before switching
-      scaleDownDelaySeconds: 60              # Keep old pods for rollback
+      activeService: webapp-bg-stable
+      previewService: webapp-bg-preview
+      autoPromotionEnabled: false
+      autoPromotionSeconds: 300
+      scaleDownDelaySeconds: 60
   template:
     metadata:
       labels:
@@ -23,10 +23,10 @@ spec:
     spec:
       containers:
       - name: webapp-bg
-        image: smitdarji/k8s:v.g.1.5         # 👈 Replace with your image tag
+        image: smitdarji/k8s:v.g.1.5    # 🟢 update tag for new rollout
         imagePullPolicy: Always
         ports:
-        - containerPort: 80
+          - containerPort: 80
         readinessProbe:
           httpGet:
             path: /

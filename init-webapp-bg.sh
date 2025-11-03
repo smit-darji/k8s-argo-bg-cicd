@@ -127,28 +127,26 @@ NODE_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[0].address}
 # Get ports
 STABLE_PORT=$(kubectl get svc ${APP_NAME}-stable -n $APP_NAMESPACE -o jsonpath='{.spec.ports[0].nodePort}' 2>/dev/null)
 PREVIEW_PORT=$(kubectl get svc ${APP_NAME}-preview -n $APP_NAMESPACE -o jsonpath='{.spec.ports[0].nodePort}' 2>/dev/null)
+CANARY_PORT=$(kubectl get svc ${APP_NAME}-canary -n $APP_NAMESPACE -o jsonpath='{.spec.ports[0].nodePort}' 2>/dev/null)
 
-# Patch preview service if missing
-if [[ -z "$PREVIEW_PORT" || "$PREVIEW_PORT" == "0" ]]; then
-  echo "⚙️  Preview service missing NodePort — patching..."
-  kubectl patch svc ${APP_NAME}-preview -n $APP_NAMESPACE -p '{"spec": {"type": "NodePort"}}' >/dev/null 2>&1
-  sleep 3
-  PREVIEW_PORT=$(kubectl get svc ${APP_NAME}-preview -n $APP_NAMESPACE -o jsonpath='{.spec.ports[0].nodePort}' 2>/dev/null)
-fi
+# Patch preview/canary service if missing
+for svc in preview canary; do
+  if ! kubectl get svc ${APP_NAME}-$svc -n $APP_NAMESPACE >/dev/null 2>&1; then
+    echo "⚙️  Creating missing ${APP_NAME}-$svc service..."
+    kubectl expose deployment ${APP_NAME}-$svc \
+      --port=80 --target-port=80 --type=NodePort -n $APP_NAMESPACE || true
+  fi
+done
 
 [[ -z "$STABLE_PORT" ]] && STABLE_PORT="Unavailable"
 [[ -z "$PREVIEW_PORT" ]] && PREVIEW_PORT="Unavailable"
+[[ -z "$CANARY_PORT" ]] && CANARY_PORT="Unavailable"
 
 echo
 echo "✅ Blue-Green Deployment Active!"
 echo "🔵 Stable URL : http://$NODE_IP:$STABLE_PORT"
 echo "🟢 Preview URL: http://$NODE_IP:$PREVIEW_PORT"
-
-STABLE_PORT=$(kubectl get svc ${APP_NAME}-stable -n $APP_NAMESPACE -o jsonpath='{.spec.ports[0].nodePort}')
-CANARY_PORT=$(kubectl get svc ${APP_NAME}-canary -n $APP_NAMESPACE -o jsonpath='{.spec.ports[0].nodePort}')
-
-echo "🔵 STABLE (Active) Deployment URL : http://$NODE_IP:$STABLE_PORT"
-echo "🟢 CANARY (Preview) Deployment URL: http://$NODE_IP:$CANARY_PORT"
+echo "🟣 Canary URL : http://$NODE_IP:$CANARY_PORT"
 
 echo
 echo "============================================================"

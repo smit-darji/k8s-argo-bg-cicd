@@ -18,10 +18,9 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-      - PruneLast=true
       - ApplyOutOfSyncOnly=true
 ---
-# ✅ Fix: Give Argo Rollouts controller access to configmaps in argocd namespace
+# ✅ Ensure Argo Rollouts controller has access to configmaps
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
