@@ -18,10 +18,10 @@ spec:
     metadata:
       labels:
         app: webapp
-        version: blue  # or green, whichever is active
+        version: blue   # 👈 auto-updated by GitHub Action
     spec:
       containers:
         - name: webapp
-          image: smitdarji/k8s:v.g.1.0
+          image: smitdarji/k8s:v.b.1.5
           ports:
             - containerPort: 80
