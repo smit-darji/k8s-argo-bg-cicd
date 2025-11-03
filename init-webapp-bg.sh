@@ -10,7 +10,7 @@ APP_NAME="webapp-bg"
 APP_NAMESPACE="webapp-bg"
 ARGOCD_NAMESPACE="argocd"
 GIT_REPO_URL="https://github.com/smit-darji/k8s-argo-bg-cicd.git"
-BRANCH="master"
+BRANCH="Master"
 APP_PATH="bluegreen"
 
 # ============================================================
