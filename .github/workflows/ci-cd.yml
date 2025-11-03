@@ -36,7 +36,7 @@ jobs:
           echo "NEW_COLOR=$NEW_COLOR" >> $GITHUB_ENV
           echo "COLOR_TAG=$COLOR_TAG" >> $GITHUB_ENV
 
-      # 3️⃣ Generate new tag (auto-increment)
+      # 3️⃣ Generate new Docker image tag (auto increment)
       - name: Generate new Docker tag
         id: tag
         run: |
@@ -55,7 +55,7 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # 5️⃣ Build & push Docker image
+      # 5️⃣ Build and push image
       - name: Build and Push Image
         uses: docker/build-push-action@v5
         with:
@@ -65,21 +65,24 @@ jobs:
             smitdarji/k8s:${{ env.NEW_TAG }}
             smitdarji/k8s:latest
 
-      # 6️⃣ Update inactive deployment and rollout to new color
-      - name: Update deployment and rollout
+      # 6️⃣ Update rollout and service dynamically
+      - name: Update manifests
         run: |
           DEPLOY_FILE="bluegreen/deployment-${{ env.NEW_COLOR }}.yaml"
           ROLLOUT_FILE="bluegreen/rollout.yaml"
           SERVICE_FILE="bluegreen/service.yaml"
 
-          echo "Updating $DEPLOY_FILE image to smitdarji/k8s:${{ env.NEW_TAG }}"
+          echo "Updating deployment → smitdarji/k8s:${{ env.NEW_TAG }}"
           sed -i "s|image: .*|image: smitdarji/k8s:${{ env.NEW_TAG }}|g" $DEPLOY_FILE
 
-          echo "Updating rollout and service to ${{ env.NEW_COLOR }}"
+          echo "Updating rollout version → ${{ env.NEW_COLOR }}"
           sed -i "s/version: .*/version: ${{ env.NEW_COLOR }}/g" $ROLLOUT_FILE
-          sed -i "s/version: .*/version: ${{ env.NEW_COLOR }}/g" $SERVICE_FILE
 
-      # 7️⃣ Commit and push (trigger ArgoCD auto-sync)
+          echo "Updating service selector versions"
+          sed -i "s/version: blue/version: ${{ env.NEW_COLOR }}/g" $SERVICE_FILE
+          sed -i "s/version: green/version: ${{ env.NEW_COLOR }}/g" $SERVICE_FILE
+
+      # 7️⃣ Commit and push to trigger ArgoCD auto-sync
       - name: Commit and push
         run: |
           git config --global user.email "actions@github.com"
@@ -88,13 +91,13 @@ jobs:
           git commit -m "🚀 Auto Deploy → ${{ env.NEW_COLOR }} | Tag: smitdarji/k8s:${{ env.NEW_TAG }}" || echo "No changes"
           git push
 
-      # # 8️⃣ Optional: Monitor Argo Rollout Progress (gradual promotion)
-      # - name: Monitor rollout (25%, 50%, 100%)
-      #   run: |
-      #     echo "⏳ Waiting for rollout to stabilize..."
-      #     sleep 180   # Wait 3 minutes (25%)
-      #     kubectl argo rollouts promote webapp-bg -n webapp-bg || true
-      #     sleep 180   # Wait 3 minutes (50%)
-      #     kubectl argo rollouts promote webapp-bg -n webapp-bg || true
-      #     sleep 240   # Wait 4 minutes (100%)
-      #     echo "✅ Blue-Green deployment complete!"
+      # 8️⃣ Gradual rollout promotion (optional)
+      - name: Monitor rollout (25%, 50%, 100%)
+        run: |
+          echo "⏳ Waiting for rollout to promote gradually..."
+          sleep 180   # 3 mins - 25%
+          kubectl argo rollouts promote webapp-bg -n webapp-bg || true
+          sleep 180   # 3 mins - 50%
+          kubectl argo rollouts promote webapp-bg -n webapp-bg || true
+          sleep 240   # 4 mins - 100%
+          echo "✅ Rollout completed successfully!"
