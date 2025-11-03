@@ -18,7 +18,7 @@ spec:
     metadata:
       labels:
         app: webapp
-        version: green
+        version: blue  # or green, whichever is active
     spec:
       containers:
         - name: webapp
