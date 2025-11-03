@@ -6,7 +6,7 @@ metadata:
 spec:
   selector:
     app: webapp
-    version: green   # current active version (auto-updated)
+    version: blue   # current active version (auto-updated)
   ports:
     - port: 80
       targetPort: 80
@@ -21,7 +21,7 @@ metadata:
 spec:
   selector:
     app: webapp
-    version: green  # preview (auto-updated)
+    version: blue  # preview (auto-updated)
   ports:
     - port: 80
       targetPort: 80
