@@ -14,15 +14,15 @@ spec:
       activeService: webapp-bg-stable
       previewService: webapp-bg-preview
       autoPromotionEnabled: true
-      autoPromotionSeconds: 180   # promote after 3 minutes if healthy
+      autoPromotionSeconds: 180
   template:
     metadata:
       labels:
         app: webapp
-        version: PLACEHOLDER_COLOR   # 👈 GitHub Action will replace this
+        version: blue  # 👈 dynamically updated by CI
     spec:
       containers:
         - name: webapp
-          image: smitdarji/k8s:PLACEHOLDER_TAG  # 👈 GitHub Action will replace this
+          image: smitdarji/k8s:v.b.1.0  # 👈 dynamically updated by CI
           ports:
             - containerPort: 80

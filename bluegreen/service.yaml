@@ -6,11 +6,11 @@ metadata:
 spec:
   selector:
     app: webapp
-    version: blue
+    version: blue   # current active version (auto-updated)
   ports:
     - port: 80
       targetPort: 80
-      nodePort: 31080
+      nodePort: 30710
   type: NodePort
 ---
 apiVersion: v1
@@ -21,9 +21,9 @@ metadata:
 spec:
   selector:
     app: webapp
-    version: blue
+    version: green  # preview (auto-updated)
   ports:
     - port: 80
       targetPort: 80
-      nodePort: 31081
+      nodePort: 32145
   type: NodePort
