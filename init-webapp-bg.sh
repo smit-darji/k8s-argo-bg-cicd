@@ -2,7 +2,7 @@
 set -e
 
 # ============================================================
-# 🚀 ArgoCD Blue-Green Deployment Setup Script (with 15-min gradual switch)
+# 🚀 ArgoCD Blue-Green Deployment Setup Script (Stable & Preview)
 # Author: Smit Darji
 # ============================================================
 
@@ -10,7 +10,7 @@ APP_NAME="webapp-bg"
 APP_NAMESPACE="webapp-bg"
 ARGOCD_NAMESPACE="argocd"
 GIT_REPO_URL="https://github.com/smit-darji/k8s-argo-bg-cicd.git"
-BRANCH="Master"
+BRANCH="main"
 APP_PATH="bluegreen"
 
 echo "============================================================"
@@ -81,10 +81,33 @@ echo "✅ ArgoCD Application created."
 
 echo
 echo "============================================================"
-echo "🎯 STEP 6: Sync ArgoCD Application"
+echo "🎯 STEP 6: Sync ArgoCD Application via CLI"
 echo "============================================================"
 
 if command -v argocd &> /dev/null; then
+  echo "🔑 Attempting ArgoCD login..."
+  
+  # Get ArgoCD password
+  ARGO_PASS=$(kubectl -n $ARGOCD_NAMESPACE get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d)
+  
+  # Start port-forward in background (if not already running)
+  if ! lsof -i :8080 >/dev/null 2>&1; then
+    kubectl port-forward svc/argocd-server -n $ARGOCD_NAMESPACE 8080:80 >/dev/null 2>&1 &
+    sleep 5
+  fi
+  
+  ARGOCD_SERVER="localhost:8080"
+  
+  # Clean existing session to prevent invalid token
+  argocd logout $ARGOCD_SERVER --grpc-web >/dev/null 2>&1 || true
+  
+  # Login
+  argocd login $ARGOCD_SERVER --username admin --password "$ARGO_PASS" --insecure --grpc-web || {
+    echo "❌ Failed to login to ArgoCD. Check that port-forwarding and password are correct."
+    exit 1
+  }
+
+  # Sync application
   echo "🔄 Syncing ArgoCD Application..."
   if argocd app sync $APP_NAME --grpc-web; then
     echo "✅ Application synced successfully from repo path: $APP_PATH"
@@ -92,38 +115,41 @@ if command -v argocd &> /dev/null; then
     echo "⚠️ ArgoCD sync failed — check login credentials or repo access."
   fi
 else
-  echo "ℹ️ ArgoCD CLI not found. Skipping manual sync (it will auto-sync via UI if enabled)."
+  echo "ℹ️ ArgoCD CLI not found — auto-sync in UI will apply manifests."
 fi
-
 
 echo
 echo "============================================================"
 echo "🌍 STEP 7: Get Application URLs"
 echo "============================================================"
-# Get Node IP (Minikube or K8s cluster)
 NODE_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[0].address}')
 
-# Try to fetch NodePorts properly for both services
+# Get ports
 STABLE_PORT=$(kubectl get svc ${APP_NAME}-stable -n $APP_NAMESPACE -o jsonpath='{.spec.ports[0].nodePort}' 2>/dev/null)
 PREVIEW_PORT=$(kubectl get svc ${APP_NAME}-preview -n $APP_NAMESPACE -o jsonpath='{.spec.ports[0].nodePort}' 2>/dev/null)
 
-# If PREVIEW_PORT is empty (N/A), fix by patching it to NodePort
-if [[ -z "$PREVIEW_PORT" ]]; then
+# Patch preview service if missing
+if [[ -z "$PREVIEW_PORT" || "$PREVIEW_PORT" == "0" ]]; then
   echo "⚙️  Preview service missing NodePort — patching..."
   kubectl patch svc ${APP_NAME}-preview -n $APP_NAMESPACE -p '{"spec": {"type": "NodePort"}}' >/dev/null 2>&1
   sleep 3
   PREVIEW_PORT=$(kubectl get svc ${APP_NAME}-preview -n $APP_NAMESPACE -o jsonpath='{.spec.ports[0].nodePort}' 2>/dev/null)
 fi
 
-# If still empty, mark as unavailable
-if [[ -z "$PREVIEW_PORT" ]]; then
-  PREVIEW_PORT="Unavailable"
-fi
+[[ -z "$STABLE_PORT" ]] && STABLE_PORT="Unavailable"
+[[ -z "$PREVIEW_PORT" ]] && PREVIEW_PORT="Unavailable"
 
 echo
 echo "✅ Blue-Green Deployment Active!"
 echo "🔵 Stable URL : http://$NODE_IP:$STABLE_PORT"
 echo "🟢 Preview URL: http://$NODE_IP:$PREVIEW_PORT"
+
+STABLE_PORT=$(kubectl get svc ${APP_NAME}-stable -n $APP_NAMESPACE -o jsonpath='{.spec.ports[0].nodePort}')
+CANARY_PORT=$(kubectl get svc ${APP_NAME}-canary -n $APP_NAMESPACE -o jsonpath='{.spec.ports[0].nodePort}')
+
+echo "🔵 STABLE (Active) Deployment URL : http://$NODE_IP:$STABLE_PORT"
+echo "🟢 CANARY (Preview) Deployment URL: http://$NODE_IP:$CANARY_PORT"
+
 echo
 echo "============================================================"
 echo "🌐 STEP 8: Check Rollout Status"
