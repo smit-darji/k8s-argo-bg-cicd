@@ -7,7 +7,7 @@ metadata:
 spec:
   selector:
     app: webapp
-    version: blue   # ✅ currently active (live traffic)
+    version: green   # ✅ currently active (live traffic)
   ports:
     - port: 80
       targetPort: 80
@@ -22,7 +22,7 @@ metadata:
 spec:
   selector:
     app: webapp
-    version: green  # ✅ next (upcoming) version for preview
+    _TMP_  # ✅ next (upcoming) version for preview
   ports:
     - port: 80
       targetPort: 80
