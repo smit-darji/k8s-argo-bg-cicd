@@ -2,6 +2,8 @@ setup:
     init.sh
     init-webapp-bg.sh
 
+chmod +x setup-monitoring.sh
+./setup-monitoring.sh
 
 
 
