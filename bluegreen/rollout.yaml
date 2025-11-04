@@ -19,10 +19,10 @@ spec:
     metadata:
       labels:
         app: webapp
-        version: blue
+        version: blue   # ✅ current active color (auto updated by pipeline)
     spec:
       containers:
         - name: webapp
-          image: smitdarji/k8s:v.g.1.1  # 👈 dynamically updated by CI
+          image: smitdarji/k8s:v.bb.1.4  # ✅ matches current active
           ports:
             - containerPort: 80

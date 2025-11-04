@@ -17,6 +17,6 @@ spec:
     spec:
       containers:
         - name: webapp
-          image: smitdarji/k8s:v.bb.1.3
+          image: smitdarji/k8s:v.bb.1.3  # ✅ latest blue build
           ports:
             - containerPort: 80

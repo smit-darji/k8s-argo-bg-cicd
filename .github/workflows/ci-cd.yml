@@ -16,13 +16,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 2️⃣ Detect current active color (from rollout.yaml)
+      # 2️⃣ Detect current active color from service.yaml
       - name: Detect current active color
         id: detect
         run: |
-          ROLLOUT_FILE="bluegreen/rollout.yaml"
-          CURRENT_COLOR=$(grep 'version:' $ROLLOUT_FILE | head -1 | awk '{print $2}')
-          echo "Current active color: $CURRENT_COLOR"
+          SERVICE_FILE="bluegreen/service.yaml"
+          CURRENT_COLOR=$(grep 'version:' $SERVICE_FILE | head -1 | awk '{print $2}')
+          echo "Current active color (from file): $CURRENT_COLOR"
 
           if [ "$CURRENT_COLOR" = "blue" ]; then
             NEW_COLOR="green"
@@ -33,10 +33,11 @@ jobs:
           fi
 
           echo "Switching to: $NEW_COLOR"
+          echo "CURRENT_COLOR=$CURRENT_COLOR" >> $GITHUB_ENV
           echo "NEW_COLOR=$NEW_COLOR" >> $GITHUB_ENV
           echo "COLOR_TAG=$COLOR_TAG" >> $GITHUB_ENV
 
-      # 3️⃣ Generate new Docker image tag (auto increment)
+      # 3️⃣ Generate new Docker tag (auto-increment)
       - name: Generate new Docker tag
         id: tag
         run: |
@@ -55,7 +56,7 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # 5️⃣ Build and push image
+      # 5️⃣ Build and Push Image
       - name: Build and Push Image
         uses: docker/build-push-action@v5
         with:
@@ -65,39 +66,42 @@ jobs:
             smitdarji/k8s:${{ env.NEW_TAG }}
             smitdarji/k8s:latest
 
-      # 6️⃣ Update rollout and service dynamically
-      - name: Update manifests
+      # 6️⃣ Update all bluegreen manifests dynamically
+      - name: Update all manifests dynamically
         run: |
-          DEPLOY_FILE="bluegreen/deployment-${{ env.NEW_COLOR }}.yaml"
-          ROLLOUT_FILE="bluegreen/rollout.yaml"
-          SERVICE_FILE="bluegreen/service.yaml"
+          echo "🔧 Updating manifests for ${{ env.NEW_COLOR }} → smitdarji/k8s:${{ env.NEW_TAG }}"
 
-          echo "Updating deployment → smitdarji/k8s:${{ env.NEW_TAG }}"
+          # Update the new deployment file
+          DEPLOY_FILE="bluegreen/deployment-${{ env.NEW_COLOR }}.yaml"
           sed -i "s|image: .*|image: smitdarji/k8s:${{ env.NEW_TAG }}|g" $DEPLOY_FILE
 
-          echo "Updating rollout version → ${{ env.NEW_COLOR }}"
-          sed -i "s/version: .*/version: ${{ env.NEW_COLOR }}/g" $ROLLOUT_FILE
+          # Update rollout.yaml version
+          sed -i "s/version: .*/version: ${{ env.NEW_COLOR }}/g" bluegreen/rollout.yaml
 
-          echo "Updating service selector versions"
-          sed -i "s/version: blue/version: ${{ env.NEW_COLOR }}/g" $SERVICE_FILE
-          sed -i "s/version: green/version: ${{ env.NEW_COLOR }}/g" $SERVICE_FILE
+          # Update service selector to new color
+          sed -i "s/version: ${{ env.CURRENT_COLOR }}/version: ${{ env.NEW_COLOR }}/g" bluegreen/service.yaml
 
-      # 7️⃣ Commit and push to trigger ArgoCD auto-sync
-      - name: Commit and push
+          # Update ingress color annotation (if used)
+          sed -i "s/version: ${{ env.CURRENT_COLOR }}/version: ${{ env.NEW_COLOR }}/g" bluegreen/ingress.yaml || true
+
+          echo "✅ All bluegreen files updated!"
+
+      # 7️⃣ Commit and push changes (to trigger ArgoCD auto-sync)
+      - name: Commit and push updates
         run: |
           git config --global user.email "actions@github.com"
           git config --global user.name "GitHub Actions"
           git add bluegreen/
-          git commit -m "🚀 Auto Deploy → ${{ env.NEW_COLOR }} | Tag: smitdarji/k8s:${{ env.NEW_TAG }}" || echo "No changes"
+          git commit -m "🚀 Auto Deploy → ${{ env.NEW_COLOR }} | Tag: smitdarji/k8s:${{ env.NEW_TAG }}" || echo "No changes to commit"
           git push
 
-      # 8️⃣ Gradual rollout promotion (optional)
-      - name: Monitor rollout (25%, 50%, 100%)
+      # 8️⃣ Optional: Gradual rollout promotion (25 → 50 → 100%)
+      - name: Gradual rollout promotion
         run: |
-          echo "⏳ Waiting for rollout to promote gradually..."
-          sleep 180   # 3 mins - 25%
+          echo "⏳ Gradually promoting rollout..."
+          sleep 180
           kubectl argo rollouts promote webapp-bg -n webapp-bg || true
-          sleep 180   # 3 mins - 50%
+          sleep 180
           kubectl argo rollouts promote webapp-bg -n webapp-bg || true
-          sleep 240   # 4 mins - 100%
-          echo "✅ Rollout completed successfully!"
+          sleep 240
+          echo "✅ Rollout promoted successfully!"
