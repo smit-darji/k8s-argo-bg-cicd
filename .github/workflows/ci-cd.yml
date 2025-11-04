@@ -71,20 +71,23 @@ jobs:
         run: |
           echo "🔧 Updating manifests for ${{ env.NEW_COLOR }} → smitdarji/k8s:${{ env.NEW_TAG }}"
 
-          # Update the new deployment file
+          # Update the new deployment file with the latest image
           DEPLOY_FILE="bluegreen/deployment-${{ env.NEW_COLOR }}.yaml"
           sed -i "s|image: .*|image: smitdarji/k8s:${{ env.NEW_TAG }}|g" $DEPLOY_FILE
 
           # Update rollout.yaml version
           sed -i "s/version: .*/version: ${{ env.NEW_COLOR }}/g" bluegreen/rollout.yaml
 
-          # Safely update service selectors (stable → new color, preview → opposite)
+          # 🔄 Safely swap service selectors using temporary placeholder
+          echo "Safely updating service selectors..."
           if [ "${{ env.NEW_COLOR }}" = "blue" ]; then
+            sed -i "s/version: blue/_TMP_/g" bluegreen/service.yaml
             sed -i "s/version: green/version: blue/g" bluegreen/service.yaml
-            sed -i "s/version: blue/version: green/g" bluegreen/service.yaml
+            sed -i "s/version: _TMP_/version: green/g" bluegreen/service.yaml
           else
+            sed -i "s/version: green/_TMP_/g" bluegreen/service.yaml
             sed -i "s/version: blue/version: green/g" bluegreen/service.yaml
-            sed -i "s/version: green/version: blue/g" bluegreen/service.yaml
+            sed -i "s/version: _TMP_/version: blue/g" bluegreen/service.yaml
           fi
 
           echo "✅ Service selectors updated correctly!"

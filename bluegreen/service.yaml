@@ -1,3 +1,4 @@
+# bluegreen/service.yaml
 apiVersion: v1
 kind: Service
 metadata:
@@ -21,7 +22,7 @@ metadata:
 spec:
   selector:
     app: webapp
-    version: blue  # ✅ next (upcoming) version for preview
+    version: green  # ✅ next (upcoming) version for preview
   ports:
     - port: 80
       targetPort: 80
