@@ -21,7 +21,7 @@ metadata:
 spec:
   selector:
     app: webapp
-    version: green  # ✅ next (upcoming) version for preview
+    version: blue  # ✅ next (upcoming) version for preview
   ports:
     - port: 80
       targetPort: 80
