@@ -22,7 +22,7 @@ jobs:
         run: |
           SERVICE_FILE="bluegreen/service.yaml"
           CURRENT_COLOR=$(grep 'version:' $SERVICE_FILE | head -1 | awk '{print $2}')
-          echo "Current active color (from file): $CURRENT_COLOR"
+          echo "Current active color: $CURRENT_COLOR"
 
           if [ "$CURRENT_COLOR" = "blue" ]; then
             NEW_COLOR="green"
@@ -66,7 +66,7 @@ jobs:
             smitdarji/k8s:${{ env.NEW_TAG }}
             smitdarji/k8s:latest
 
-      # 6️⃣ Update all bluegreen manifests dynamically
+      # 6️⃣ Update all blue-green manifests dynamically
       - name: Update all manifests dynamically
         run: |
           echo "🔧 Updating manifests for ${{ env.NEW_COLOR }} → smitdarji/k8s:${{ env.NEW_TAG }}"
@@ -78,15 +78,18 @@ jobs:
           # Update rollout.yaml version
           sed -i "s/version: .*/version: ${{ env.NEW_COLOR }}/g" bluegreen/rollout.yaml
 
-          # Update service selector to new color
-          sed -i "s/version: ${{ env.CURRENT_COLOR }}/version: ${{ env.NEW_COLOR }}/g" bluegreen/service.yaml
+          # Safely update service selectors (stable → new color, preview → opposite)
+          if [ "${{ env.NEW_COLOR }}" = "blue" ]; then
+            sed -i "s/version: green/version: blue/g" bluegreen/service.yaml
+            sed -i "s/version: blue/version: green/g" bluegreen/service.yaml
+          else
+            sed -i "s/version: blue/version: green/g" bluegreen/service.yaml
+            sed -i "s/version: green/version: blue/g" bluegreen/service.yaml
+          fi
 
-          # Update ingress color annotation (if used)
-          sed -i "s/version: ${{ env.CURRENT_COLOR }}/version: ${{ env.NEW_COLOR }}/g" bluegreen/ingress.yaml || true
+          echo "✅ Service selectors updated correctly!"
 
-          echo "✅ All bluegreen files updated!"
-
-      # 7️⃣ Commit and push changes (to trigger ArgoCD auto-sync)
+      # 7️⃣ Commit and push changes (trigger ArgoCD auto-sync)
       - name: Commit and push updates
         run: |
           git config --global user.email "actions@github.com"
@@ -94,14 +97,3 @@ jobs:
           git add bluegreen/
           git commit -m "🚀 Auto Deploy → ${{ env.NEW_COLOR }} | Tag: smitdarji/k8s:${{ env.NEW_TAG }}" || echo "No changes to commit"
           git push
-
-      # 8️⃣ Optional: Gradual rollout promotion (25 → 50 → 100%)
-      - name: Gradual rollout promotion
-        run: |
-          echo "⏳ Gradually promoting rollout..."
-          sleep 180
-          kubectl argo rollouts promote webapp-bg -n webapp-bg || true
-          sleep 180
-          kubectl argo rollouts promote webapp-bg -n webapp-bg || true
-          sleep 240
-          echo "✅ Rollout promoted successfully!"
