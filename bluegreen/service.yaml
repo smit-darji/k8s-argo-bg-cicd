@@ -1,4 +1,3 @@
-# bluegreen/service.yaml
 apiVersion: v1
 kind: Service
 metadata:
@@ -7,7 +6,7 @@ metadata:
 spec:
   selector:
     app: webapp
-    version: green   # ✅ currently active (live traffic)
+    version: blue   # ✅ currently stable/live
   ports:
     - port: 80
       targetPort: 80
@@ -22,7 +21,7 @@ metadata:
 spec:
   selector:
     app: webapp
-    _TMP_  # ✅ next (upcoming) version for preview
+    version: green  # ✅ currently preview/test
   ports:
     - port: 80
       targetPort: 80

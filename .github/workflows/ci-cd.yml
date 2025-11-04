@@ -78,16 +78,16 @@ jobs:
           # Update rollout.yaml version
           sed -i "s/version: .*/version: ${{ env.NEW_COLOR }}/g" bluegreen/rollout.yaml
 
-          # 🔄 Safely swap service selectors using temporary placeholder
+          # ✅ Fixed: Safely swap service selectors (no invalid YAML)
           echo "Safely updating service selectors..."
           if [ "${{ env.NEW_COLOR }}" = "blue" ]; then
-            sed -i "s/version: blue/_TMP_/g" bluegreen/service.yaml
-            sed -i "s/version: green/version: blue/g" bluegreen/service.yaml
-            sed -i "s/version: _TMP_/version: green/g" bluegreen/service.yaml
-          else
-            sed -i "s/version: green/_TMP_/g" bluegreen/service.yaml
+            sed -i "s/version: green/version: temp/g" bluegreen/service.yaml
             sed -i "s/version: blue/version: green/g" bluegreen/service.yaml
-            sed -i "s/version: _TMP_/version: blue/g" bluegreen/service.yaml
+            sed -i "s/version: temp/version: blue/g" bluegreen/service.yaml
+          else
+            sed -i "s/version: blue/version: temp/g" bluegreen/service.yaml
+            sed -i "s/version: green/version: blue/g" bluegreen/service.yaml
+            sed -i "s/version: temp/version: green/g" bluegreen/service.yaml
           fi
 
           echo "✅ Service selectors updated correctly!"
