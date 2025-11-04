@@ -19,7 +19,7 @@ spec:
     metadata:
       labels:
         app: webapp
-        version: blue   # ✅ current active color (auto updated by pipeline)
+        version: green
     spec:
       containers:
         - name: webapp
