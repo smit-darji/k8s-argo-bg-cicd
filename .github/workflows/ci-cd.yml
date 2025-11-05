@@ -26,10 +26,10 @@ jobs:
 
           if [ "$CURRENT_COLOR" = "blue" ]; then
             NEW_COLOR="green"
-            COLOR_TAG="v.gg"
+            COLOR_TAG="v.gg_l"
           else
             NEW_COLOR="blue"
-            COLOR_TAG="v.bb"
+            COLOR_TAG="v.bb_l"
           fi
 
           echo "Switching to: $NEW_COLOR"
@@ -85,7 +85,8 @@ jobs:
             sed -i "s/version: blue/version: green/g" bluegreen/service.yaml
             sed -i "s/version: temp/version: blue/g" bluegreen/service.yaml
           else
-            sed -i "s/version: blue/version: temp/g" bluegreen/service.yaml
+            sed -i "s/version: blue/version: tempdocker build -t webapp-log-pusher:latest .
+/g" bluegreen/service.yaml
             sed -i "s/version: green/version: blue/g" bluegreen/service.yaml
             sed -i "s/version: temp/version: green/g" bluegreen/service.yaml
           fi
