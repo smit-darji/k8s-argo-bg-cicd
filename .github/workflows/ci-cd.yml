@@ -16,12 +16,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 2️⃣ Detect current active color from rollout/service.yaml
+      # 2️⃣ Detect current active color from rollout.yaml
       - name: Detect current active color
         id: detect
         run: |
-          SERVICE_FILE="bluegreen/service.yaml"
-          CURRENT_COLOR=$(grep 'version:' $SERVICE_FILE | head -1 | awk '{print $2}')
+          ROLL_OUT_FILE="bluegreen/rollout.yaml"
+          CURRENT_COLOR=$(grep 'version:' $ROLL_OUT_FILE | grep 'app: webapp' -A1 | tail -1 | awk '{print $2}')
           echo "Current active color: $CURRENT_COLOR"
 
           if [ "$CURRENT_COLOR" = "blue" ]; then
@@ -32,21 +32,24 @@ jobs:
             COLOR_TAG="v.bb_l"
           fi
 
-          echo "Switching to: $NEW_COLOR"
           echo "CURRENT_COLOR=$CURRENT_COLOR" >> $GITHUB_ENV
           echo "NEW_COLOR=$NEW_COLOR" >> $GITHUB_ENV
           echo "COLOR_TAG=$COLOR_TAG" >> $GITHUB_ENV
+          echo "Switching to: $NEW_COLOR"
 
       # 3️⃣ Generate new Docker tag (auto-increment)
       - name: Generate new Docker tag
         id: tag
         run: |
           DEPLOY_FILE="bluegreen/deployment-${{ env.NEW_COLOR }}.yaml"
-          CURRENT_TAG=$(grep 'image:' $DEPLOY_FILE | awk -F ':' '{print $3}')
-          PREFIX=$(echo $CURRENT_TAG | awk -F '.' '{print $1"."$2"."$3}')
-          PATCH=$(echo $CURRENT_TAG | awk -F '.' '{print $4 + 1}')
-          NEW_TAG="${PREFIX}.${PATCH}"
-          echo "New image tag: $NEW_TAG"
+          CURRENT_TAG=$(grep 'image:' $DEPLOY_FILE | awk -F ':' '{print $2}') # e.g., v.bb_l.0.1
+          echo "Current tag: $CURRENT_TAG"
+
+          # Split tag into parts
+          IFS='.' read -r PREFIX1 PREFIX2 PREFIX3 PATCH <<< "$CURRENT_TAG"
+          PATCH=$((PATCH + 1))
+          NEW_TAG="${PREFIX1}.${PREFIX2}.${PREFIX3}.${PATCH}"
+          echo "New Docker tag: $NEW_TAG"
           echo "NEW_TAG=$NEW_TAG" >> $GITHUB_ENV
 
       # 4️⃣ Login to DockerHub
@@ -56,7 +59,7 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # 5️⃣ Build and Push Image
+      # 5️⃣ Build and Push Docker Image
       - name: Build and Push Image
         uses: docker/build-push-action@v5
         with:
@@ -66,32 +69,26 @@ jobs:
             smitdarji/k8s:${{ env.NEW_TAG }}
             smitdarji/k8s:latest
 
-      # 6️⃣ Update all blue-green manifests dynamically
-      - name: Update all manifests dynamically
+      # 6️⃣ Update Deployment Manifest with new image
+      - name: Update deployment image
         run: |
-          echo "🔧 Updating manifests for ${{ env.NEW_COLOR }} → smitdarji/k8s:${{ env.NEW_TAG }}"
-
-          # Update the new deployment file with the latest image
           DEPLOY_FILE="bluegreen/deployment-${{ env.NEW_COLOR }}.yaml"
           sed -i "s|image: .*|image: smitdarji/k8s:${{ env.NEW_TAG }}|g" $DEPLOY_FILE
+          echo "✅ Deployment image updated: $DEPLOY_FILE"
 
-          # Update rollout.yaml version
-          sed -i "s/version: .*/version: ${{ env.NEW_COLOR }}/g" bluegreen/rollout.yaml
+      # 7️⃣ Update rollout.yaml template version
+      - name: Update rollout version
+        run: |
+          sed -i "/template:/,/spec:/ s/version: .*/version: ${{ env.NEW_COLOR }}/" bluegreen/rollout.yaml
+          echo "✅ Rollout template version updated to ${{ env.NEW_COLOR }}"
 
-          # Safely swap service selectors
-          echo "🔄 Swapping service selectors..."
-          if [ "${{ env.NEW_COLOR }}" = "blue" ]; then
-            sed -i "s/version: green/version: temp/g" bluegreen/service.yaml
-            sed -i "s/version: blue/version: green/g" bluegreen/service.yaml
-            sed -i "s/version: temp/version: blue/g" bluegreen/service.yaml
-          else
-            sed -i "s/version: blue/version: temp/g" bluegreen/service.yaml
-            sed -i "s/version: green/version: blue/g" bluegreen/service.yaml
-            sed -i "s/version: temp/version: green/g" bluegreen/service.yaml
-          fi
-          echo "✅ Service selectors updated correctly!"
+      # 8️⃣ Update service selectors (stable service)
+      - name: Update service selector
+        run: |
+          sed -i "s/version: .*/version: ${{ env.NEW_COLOR }}/" bluegreen/service.yaml
+          echo "✅ Service selector updated to ${{ env.NEW_COLOR }}"
 
-      # 7️⃣ Commit and push changes (trigger ArgoCD auto-sync)
+      # 9️⃣ Commit and push changes (trigger ArgoCD auto-sync)
       - name: Commit and push updates
         run: |
           git config --global user.email "actions@github.com"
