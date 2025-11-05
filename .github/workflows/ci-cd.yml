@@ -23,7 +23,8 @@ jobs:
         id: detect
         run: |
           ROLL_OUT_FILE="bluegreen/rollout.yaml"
-          CURRENT_COLOR=$(grep 'version:' $ROLL_OUT_FILE | grep 'app: webapp' -A1 | tail -1 | awk '{print $2}' | tr -d '[:space:]')
+          # Detect the version label from rollout template
+          CURRENT_COLOR=$(grep -A1 "app: webapp" $ROLL_OUT_FILE | grep "version:" | awk '{print $2}' | tr -d '[:space:]')
           echo "Current active color: $CURRENT_COLOR"
 
           if [ "$CURRENT_COLOR" = "blue" ]; then
@@ -44,8 +45,8 @@ jobs:
         id: tag
         run: |
           DEPLOY_FILE="bluegreen/deployment-${{ env.NEW_COLOR }}.yaml"
-          # Cleanly extract current tag
-          CURRENT_TAG=$(grep 'image:' "$DEPLOY_FILE" | awk '{print $2}' | awk -F '/' '{print $NF}' | awk -F ':' '{print $2}' | tr -d '[:space:]')
+          # Extract current tag safely
+          CURRENT_TAG=$(grep 'image:' "$DEPLOY_FILE" | awk -F ':' '{print $3}' | tr -d '[:space:]')
           echo "Current tag: $CURRENT_TAG"
 
           # Split tag into parts and increment patch
@@ -86,11 +87,12 @@ jobs:
           sed -i "/template:/,/spec:/ s/version: .*/version: ${{ env.NEW_COLOR }}/" bluegreen/rollout.yaml
           echo "✅ Rollout template version updated to ${{ env.NEW_COLOR }}"
 
-      # 8️⃣ Update preview service selector only
-      - name: Update preview service selector
+      # 8️⃣ Update service selectors
+      - name: Update services selectors
         run: |
-          PREVIEW_FILE="bluegreen/webapp-bg-preview.yaml"
-          sed -i "s/version: .*/version: ${{ env.NEW_COLOR }}/" "$PREVIEW_FILE"
+          SERVICE_FILE="bluegreen/service.yaml"
+          # Update stable (keep current stable unchanged) and preview service
+          sed -i "/name: webapp-bg-preview/,/ports:/ s/version: .*/version: ${{ env.NEW_COLOR }}/" "$SERVICE_FILE"
           echo "✅ Preview service selector updated to ${{ env.NEW_COLOR }}"
 
       # 9️⃣ Commit and push changes (trigger ArgoCD auto-sync)
