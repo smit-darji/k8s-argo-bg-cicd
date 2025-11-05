@@ -14,8 +14,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout repository
-      - name: Checkout code
+      # 1️⃣ Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       # 2️⃣ Detect current active color from rollout.yaml
@@ -28,10 +28,10 @@ jobs:
 
           if [ "$CURRENT_COLOR" = "blue" ]; then
             NEW_COLOR="green"
-            COLOR_TAG="v.gg_l"
+            COLOR_TAG="gg_l"
           else
             NEW_COLOR="blue"
-            COLOR_TAG="v.bb_l"
+            COLOR_TAG="bb_l"
           fi
 
           echo "CURRENT_COLOR=$CURRENT_COLOR" >> $GITHUB_ENV
@@ -47,11 +47,10 @@ jobs:
           CURRENT_TAG=$(grep 'image:' $DEPLOY_FILE | awk -F ':' '{print $2}' | tr -d '[:space:]')
           echo "Current tag: $CURRENT_TAG"
 
-          # Split tag into parts safely
           IFS='.' read -r PREFIX1 PREFIX2 PREFIX3 PATCH <<< "$CURRENT_TAG"
           PATCH=$((PATCH + 1))
           NEW_TAG="${PREFIX1}.${PREFIX2}.${PREFIX3}.${PATCH}"
-          NEW_TAG=$(echo $NEW_TAG | tr -d '[:space:]')  # remove any extra spaces
+          NEW_TAG=$(echo $NEW_TAG | tr -d '[:space:]')
           echo "New Docker tag: $NEW_TAG"
           echo "NEW_TAG=$NEW_TAG" >> $GITHUB_ENV
 
@@ -79,13 +78,13 @@ jobs:
           sed -i "s|image: .*|image: smitdarji/k8s:${{ env.NEW_TAG }}|g" "$DEPLOY_FILE"
           echo "✅ Deployment image updated: $DEPLOY_FILE"
 
-      # 7️⃣ Update rollout.yaml template version safely
+      # 7️⃣ Update rollout template version
       - name: Update rollout version
         run: |
           sed -i "/template:/,/spec:/ s/version: .*/version: ${{ env.NEW_COLOR }}/" bluegreen/rollout.yaml
           echo "✅ Rollout template version updated to ${{ env.NEW_COLOR }}"
 
-      # 8️⃣ Update stable service selector safely
+      # 8️⃣ Update preview service selector only
       - name: Update preview service selector
         run: |
           PREVIEW_FILE="bluegreen/webapp-bg-preview.yaml"
