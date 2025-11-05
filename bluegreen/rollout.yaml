@@ -23,6 +23,6 @@ spec:
     spec:
       containers:
         - name: webapp
-          image: smitdarji/k8s:v.bb.1.4  # ✅ matches current active
+          image: smitdarji/k8s:v.bb.l.0  # ✅ matches current active
           ports:
             - containerPort: 80
