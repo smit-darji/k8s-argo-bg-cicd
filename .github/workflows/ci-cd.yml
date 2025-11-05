@@ -2,7 +2,9 @@ name: 🌈 Blue-Green Auto Deployment (Full CI/CD)
 
 on:
   push:
-    branches: [ main, Master ]
+    branches:
+      - main
+      - Master
 
 permissions:
   contents: write
