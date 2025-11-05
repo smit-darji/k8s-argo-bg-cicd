@@ -47,7 +47,7 @@ jobs:
           CURRENT_TAG=$(grep 'image:' $DEPLOY_FILE | awk -F ':' '{print $2}' | tr -d '[:space:]')
           echo "Current tag: $CURRENT_TAG"
 
-          # Split tag into parts and increment patch
+          # Split tag into parts safely
           IFS='.' read -r PREFIX1 PREFIX2 PREFIX3 PATCH <<< "$CURRENT_TAG"
           PATCH=$((PATCH + 1))
           NEW_TAG="${PREFIX1}.${PREFIX2}.${PREFIX3}.${PATCH}"
@@ -76,20 +76,21 @@ jobs:
       - name: Update deployment image
         run: |
           DEPLOY_FILE="bluegreen/deployment-${{ env.NEW_COLOR }}.yaml"
-          sed -i "s|image: .*|image: smitdarji/k8s:${{ env.NEW_TAG }}|g" $DEPLOY_FILE
+          sed -i "s|image: .*|image: smitdarji/k8s:${{ env.NEW_TAG }}|g" "$DEPLOY_FILE"
           echo "✅ Deployment image updated: $DEPLOY_FILE"
 
-      # 7️⃣ Update rollout.yaml template version
+      # 7️⃣ Update rollout.yaml template version safely
       - name: Update rollout version
         run: |
           sed -i "/template:/,/spec:/ s/version: .*/version: ${{ env.NEW_COLOR }}/" bluegreen/rollout.yaml
           echo "✅ Rollout template version updated to ${{ env.NEW_COLOR }}"
 
-      # 8️⃣ Update service selectors (stable service)
-      - name: Update service selector
+      # 8️⃣ Update stable service selector safely
+      - name: Update preview service selector
         run: |
-          sed -i "s/version: .*/version: ${{ env.NEW_COLOR }}/" bluegreen/service.yaml
-          echo "✅ Service selector updated to ${{ env.NEW_COLOR }}"
+          PREVIEW_FILE="bluegreen/webapp-bg-preview.yaml"
+          sed -i "s/version: .*/version: ${{ env.NEW_COLOR }}/" "$PREVIEW_FILE"
+          echo "✅ Preview service selector updated to ${{ env.NEW_COLOR }}"
 
       # 9️⃣ Commit and push changes (trigger ArgoCD auto-sync)
       - name: Commit and push updates
