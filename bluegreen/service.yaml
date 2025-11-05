@@ -6,7 +6,7 @@ metadata:
 spec:
   selector:
     app: webapp
-    version: green   # ✅ currently stable/live
+    version: blue   # ✅ currently stable/live
   ports:
     - port: 80
       targetPort: 80
@@ -21,7 +21,7 @@ metadata:
 spec:
   selector:
     app: webapp
-    version: blue  # ✅ currently preview/test
+    version: green  # ✅ currently preview/test
   ports:
     - port: 80
       targetPort: 80
