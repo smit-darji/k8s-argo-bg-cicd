@@ -16,7 +16,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 2️⃣ Detect current active color from service.yaml
+      # 2️⃣ Detect current active color from rollout/service.yaml
       - name: Detect current active color
         id: detect
         run: |
@@ -78,19 +78,17 @@ jobs:
           # Update rollout.yaml version
           sed -i "s/version: .*/version: ${{ env.NEW_COLOR }}/g" bluegreen/rollout.yaml
 
-          # ✅ Fixed: Safely swap service selectors (no invalid YAML)
-          echo "Safely updating service selectors..."
+          # Safely swap service selectors
+          echo "🔄 Swapping service selectors..."
           if [ "${{ env.NEW_COLOR }}" = "blue" ]; then
             sed -i "s/version: green/version: temp/g" bluegreen/service.yaml
             sed -i "s/version: blue/version: green/g" bluegreen/service.yaml
             sed -i "s/version: temp/version: blue/g" bluegreen/service.yaml
           else
-            sed -i "s/version: blue/version: tempdocker build -t webapp-log-pusher:latest .
-/g" bluegreen/service.yaml
+            sed -i "s/version: blue/version: temp/g" bluegreen/service.yaml
             sed -i "s/version: green/version: blue/g" bluegreen/service.yaml
             sed -i "s/version: temp/version: green/g" bluegreen/service.yaml
           fi
-
           echo "✅ Service selectors updated correctly!"
 
       # 7️⃣ Commit and push changes (trigger ArgoCD auto-sync)
