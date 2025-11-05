@@ -14,8 +14,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout code
-      - name: Checkout repository
+      # 1️⃣ Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
       # 2️⃣ Detect current active color from rollout.yaml
@@ -44,9 +44,11 @@ jobs:
         id: tag
         run: |
           DEPLOY_FILE="bluegreen/deployment-${{ env.NEW_COLOR }}.yaml"
-          CURRENT_TAG=$(grep 'image:' $DEPLOY_FILE | awk -F ':' '{print $2}' | tr -d '[:space:]')
+          # Cleanly extract current tag
+          CURRENT_TAG=$(grep 'image:' "$DEPLOY_FILE" | awk '{print $2}' | awk -F '/' '{print $NF}' | awk -F ':' '{print $2}' | tr -d '[:space:]')
           echo "Current tag: $CURRENT_TAG"
 
+          # Split tag into parts and increment patch
           IFS='.' read -r PREFIX1 PREFIX2 PREFIX3 PATCH <<< "$CURRENT_TAG"
           PATCH=$((PATCH + 1))
           NEW_TAG="${PREFIX1}.${PREFIX2}.${PREFIX3}.${PATCH}"
@@ -78,7 +80,7 @@ jobs:
           sed -i "s|image: .*|image: smitdarji/k8s:${{ env.NEW_TAG }}|g" "$DEPLOY_FILE"
           echo "✅ Deployment image updated: $DEPLOY_FILE"
 
-      # 7️⃣ Update rollout template version
+      # 7️⃣ Update rollout.yaml template version
       - name: Update rollout version
         run: |
           sed -i "/template:/,/spec:/ s/version: .*/version: ${{ env.NEW_COLOR }}/" bluegreen/rollout.yaml
