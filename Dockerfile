@@ -13,5 +13,5 @@ RUN pip install --no-cache-dir flask requests
 # Expose port (match Flask app port)
 EXPOSE 80
 
-# Set default command to run your app
+# Start the Flask app
 CMD ["python", "push_logs.py"]

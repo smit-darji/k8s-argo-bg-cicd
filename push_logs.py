@@ -1,4 +1,4 @@
-from flask import Flask, request
+from flask import Flask, request, send_from_directory
 import requests, time, json, os
 
 app = Flask(__name__)
@@ -8,7 +8,6 @@ LOKI_URL = os.environ.get("LOKI_URL", "http://loki.monitoring.svc.cluster.local:
 JOB_LABEL = "web-app-project"
 
 def push_to_loki(level: str, message: str):
-    """Helper function to push a log message to Loki"""
     timestamp = str(int(time.time() * 1e9))
     payload = {
         "streams": [{
@@ -24,6 +23,11 @@ def push_to_loki(level: str, message: str):
             return False, f"❌ Failed ({res.status_code}): {res.text}"
     except Exception as e:
         return False, f"⚠️ Error: {str(e)}"
+
+# Serve index.html at root
+@app.route("/")
+def index():
+    return send_from_directory(".", "index.html")
 
 @app.route("/web_app_success", methods=["POST"])
 def web_app_success():
