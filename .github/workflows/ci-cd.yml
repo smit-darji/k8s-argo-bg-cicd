@@ -23,7 +23,7 @@ jobs:
         id: detect
         run: |
           ROLL_OUT_FILE="bluegreen/rollout.yaml"
-          CURRENT_COLOR=$(grep 'version:' $ROLL_OUT_FILE | grep 'app: webapp' -A1 | tail -1 | awk '{print $2}')
+          CURRENT_COLOR=$(grep 'version:' $ROLL_OUT_FILE | grep 'app: webapp' -A1 | tail -1 | awk '{print $2}' | tr -d '[:space:]')
           echo "Current active color: $CURRENT_COLOR"
 
           if [ "$CURRENT_COLOR" = "blue" ]; then
@@ -44,13 +44,14 @@ jobs:
         id: tag
         run: |
           DEPLOY_FILE="bluegreen/deployment-${{ env.NEW_COLOR }}.yaml"
-          CURRENT_TAG=$(grep 'image:' $DEPLOY_FILE | awk -F ':' '{print $2}') # e.g., v.bb_l.0.1
+          CURRENT_TAG=$(grep 'image:' $DEPLOY_FILE | awk -F ':' '{print $2}' | tr -d '[:space:]')
           echo "Current tag: $CURRENT_TAG"
 
-          # Split tag into parts
+          # Split tag into parts and increment patch
           IFS='.' read -r PREFIX1 PREFIX2 PREFIX3 PATCH <<< "$CURRENT_TAG"
           PATCH=$((PATCH + 1))
           NEW_TAG="${PREFIX1}.${PREFIX2}.${PREFIX3}.${PATCH}"
+          NEW_TAG=$(echo $NEW_TAG | tr -d '[:space:]')  # remove any extra spaces
           echo "New Docker tag: $NEW_TAG"
           echo "NEW_TAG=$NEW_TAG" >> $GITHUB_ENV
 
