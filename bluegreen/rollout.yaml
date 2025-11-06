@@ -19,10 +19,10 @@ spec:
     metadata:
       labels:
         app: webapp
-        version: blue
+        version: green
     spec:
       containers:
         - name: webapp
-          image: smitdarji/k8s:webapp_blue_${{ github.sha }}
+          image: smitdarji/k8s:webapp_green_391de54
           ports:
             - containerPort: 80
