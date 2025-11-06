@@ -22,11 +22,11 @@ spec:
     metadata:
       labels:
         app: webapp
-        version: blue
+        version: green
     spec:
       containers:
         - name: webapp
-          image: smitdarji/k8s:webapp_blue_e05ea6c # CI overwrites to webapp_<color>_<shortsha>
+          image: smitdarji/k8s:webapp_green_1b096c8 # CI overwrites to webapp_<color>_<shortsha>
           ports:
             - containerPort: 80
           readinessProbe:
