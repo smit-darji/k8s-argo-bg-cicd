@@ -5,7 +5,7 @@ metadata:
   namespace: webapp-bg
   labels:
     app: webapp
-    releaseColor: blue   # CI flips between blue/green
+    releaseColor: blue # CI flips between blue/green
 spec:
   replicas: 2
   revisionHistoryLimit: 2
@@ -21,18 +21,19 @@ spec:
   template:
     metadata:
       labels:
-        app: webapp     
+        app: webapp
+        version: blue
     spec:
       containers:
         - name: webapp
-          image: smitdarji/k8s:webapp_blue_bc49b94   # CI overwrites to webapp_<color>_<shortsha>
+          image: smitdarji/k8s:webapp_blue_e05ea6c # CI overwrites to webapp_<color>_<shortsha>
           ports:
             - containerPort: 80
           readinessProbe:
-            httpGet: { path: /, port: 80 }
+            httpGet: {path: /, port: 80}
             initialDelaySeconds: 3
             periodSeconds: 5
           livenessProbe:
-            httpGet: { path: /, port: 80 }
+            httpGet: {path: /, port: 80}
             initialDelaySeconds: 10
             periodSeconds: 10
