@@ -17,6 +17,6 @@ spec:
     spec:
       containers:
         - name: webapp
-          image: smitdarji/k8s:gg_l...2
+          image: smitdarji/k8s:webapp_green_${{ github.sha }}
           ports:
             - containerPort: 80
