@@ -18,8 +18,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2️⃣ Install yq for safe YAML edits
-      - name: Install yq
+      # 2️⃣ Install yq and jq
+      - name: Install yq & jq
         run: |
           sudo apt-get update -y
           sudo apt-get install -y jq
@@ -31,8 +31,8 @@ jobs:
         id: detect
         run: |
           ROLLOUT_FILE="bluegreen/rollout.yaml"
-          CURRENT_COLOR=$(yq '.spec.template.metadata.labels.version' $ROLLOUT_FILE)
-          echo "🟢 Current color is: $CURRENT_COLOR"
+          CURRENT_COLOR=$(yq '.spec.template.metadata.labels.version' "$ROLLOUT_FILE" | tr -d '"')
+          echo "🟢 Current active color: $CURRENT_COLOR"
 
           if [ "$CURRENT_COLOR" = "blue" ]; then
             NEW_COLOR="green"
@@ -40,11 +40,11 @@ jobs:
             NEW_COLOR="blue"
           fi
 
-          echo "Switching to color: $NEW_COLOR"
+          echo "🎨 Switching to color: $NEW_COLOR"
           echo "CURRENT_COLOR=$CURRENT_COLOR" >> $GITHUB_ENV
           echo "NEW_COLOR=$NEW_COLOR" >> $GITHUB_ENV
 
-      # 4️⃣ Generate tag in required format (webapp_<color>_<short-sha>)
+      # 4️⃣ Generate tag in format: webapp_<color>_<shortsha>
       - name: Generate Docker image tag
         id: tag
         run: |
@@ -60,7 +60,7 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # 6️⃣ Build and push Docker image
+      # 6️⃣ Build and Push Docker image
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v5
         with:
@@ -70,37 +70,47 @@ jobs:
             smitdarji/k8s:${{ env.NEW_TAG }}
             smitdarji/k8s:latest
 
-      # 7️⃣ Update deployment manifest
+      # 7️⃣ Update deployment manifest for new color
       - name: Update deployment image
         run: |
           DEPLOY_FILE="bluegreen/deployment-${{ env.NEW_COLOR }}.yaml"
           yq -i ".spec.template.spec.containers[0].image = \"smitdarji/k8s:${{ env.NEW_TAG }}\"" "$DEPLOY_FILE"
           echo "✅ Updated $DEPLOY_FILE → smitdarji/k8s:${{ env.NEW_TAG }}"
 
-      # 8️⃣ Update rollout.yaml (switch version + image)
+      # 8️⃣ Update rollout.yaml
       - name: Update rollout.yaml
         run: |
           yq -i ".spec.template.metadata.labels.version = \"${{ env.NEW_COLOR }}\"" bluegreen/rollout.yaml
           yq -i ".spec.template.spec.containers[0].image = \"smitdarji/k8s:${{ env.NEW_TAG }}\"" bluegreen/rollout.yaml
           echo "✅ rollout.yaml updated → version=${{ env.NEW_COLOR }}, image=${{ env.NEW_TAG }}"
 
-      # 9️⃣ Update preview service selector
-      - name: Update service selector
+      # 9️⃣ Update services dynamically (Stable = current, Preview = new)
+      - name: Update service selectors
         run: |
           SERVICE_FILE="bluegreen/service.yaml"
-          yq -i "(.spec.selector.version) = \"${{ env.NEW_COLOR }}\"" "$SERVICE_FILE"
-          echo "✅ Preview service selector set to ${{ env.NEW_COLOR }}"
+          CURRENT="${{ env.CURRENT_COLOR }}"
+          NEXT="${{ env.NEW_COLOR }}"
 
-      # 🔟 Commit & push (ArgoCD auto-sync)
+          echo "🛠 Updating service selectors: stable=$CURRENT, preview=$NEXT"
+
+          # Update stable service to current color
+          yq -i "select(.metadata.name == \"webapp-bg-stable\").spec.selector.version = \"$CURRENT\"" "$SERVICE_FILE"
+
+          # Update preview service to new color
+          yq -i "select(.metadata.name == \"webapp-bg-preview\").spec.selector.version = \"$NEXT\"" "$SERVICE_FILE"
+
+          echo "✅ Service selectors updated successfully."
+
+      # 🔟 Commit and push updates
       - name: Commit and push manifest changes
         run: |
           git config --global user.email "actions@github.com"
           git config --global user.name "GitHub Actions"
           git add bluegreen/
-          git commit -m "🚀 Auto Deploy → ${{ env.NEW_COLOR }} | smitdarji/k8s:${{ env.NEW_TAG }}" || echo "No changes to commit"
+          git commit -m "🚀 Auto Deploy → ${{ env.NEW_COLOR }} | Tag: smitdarji/k8s:${{ env.NEW_TAG }}" || echo "No changes to commit"
           git push
 
-      # # 1️⃣1️⃣ Optional: ArgoCD sync trigger (if watching this repo)
+      # # (Optional) Trigger ArgoCD Sync
       # - name: Trigger ArgoCD Sync (optional)
       #   if: ${{ success() }}
-      #   run: echo "🔁 ArgoCD auto-sync will pick up the manifest changes automatically."
+      #   run: echo "🔁 ArgoCD auto-sync will pick up manifest changes automatically."
