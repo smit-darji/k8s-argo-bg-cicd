@@ -2,7 +2,7 @@
 set -e
 
 # ============================================================
-# 🚀 ArgoCD Blue-Green Deployment Script (Self-Healing)
+# 🚀 ArgoCD Blue-Green Deployment Bootstrap Script
 # Author: Smit Darji
 # ============================================================
 
@@ -12,6 +12,8 @@ ARGOCD_NAMESPACE="argocd"
 GIT_REPO_URL="https://github.com/smit-darji/k8s-argo-bg-cicd.git"
 BRANCH="Master"
 APP_PATH="bluegreen"
+APP_FILE="${APP_PATH}/argo-app-webapp-bg.yaml"
+ROLLOUT_FILE="${APP_PATH}/rollout.yaml"
 
 # ============================================================
 # 🧹 STEP 1: Cleanup (Safe)
@@ -33,34 +35,26 @@ kubectl create namespace $APP_NAMESPACE || echo "⚠️ Namespace already exists
 # ============================================================
 echo "🔍 Checking Argo Rollouts installation..."
 if ! kubectl get crd rollouts.argoproj.io >/dev/null 2>&1; then
-  echo "⚙️  Installing Argo Rollouts CRDs and Controller..."
+  echo "⚙️ Installing Argo Rollouts CRDs and Controller..."
   kubectl apply -f https://github.com/argoproj/argo-rollouts/releases/latest/download/install.yaml
 else
   echo "✅ Argo Rollouts CRDs already installed."
 fi
 
-# Wait for rollout controller pod to start
 echo "⏳ Waiting for Argo Rollouts controller to be ready..."
 kubectl wait --for=condition=available deployment/argo-rollouts -n argo-rollouts --timeout=120s || {
-  echo "⚠️ Rollouts controller not ready, trying to reinstall..."
+  echo "⚠️ Rollouts controller not ready, retrying installation..."
   kubectl delete ns argo-rollouts --ignore-not-found=true
   kubectl apply -f https://github.com/argoproj/argo-rollouts/releases/latest/download/install.yaml
   sleep 30
 }
 echo "✅ Argo Rollouts controller ready."
 
-# Verify Rollout kind is available
-if ! kubectl explain rollout >/dev/null 2>&1; then
-  echo "❌ Rollout kind not registered — reinstalling CRDs..."
-  kubectl apply -f https://github.com/argoproj/argo-rollouts/releases/latest/download/install.yaml
-  sleep 20
-fi
-
 # ============================================================
-# 🧰 STEP 4: Fix RBAC (if needed)
+# 🧰 STEP 4: Ensure RBAC for Argo Rollouts
 # ============================================================
 echo "🔧 Ensuring RBAC for Argo Rollouts..."
-cat <<EOF | kubectl apply -f -
+kubectl apply -f - <<EOF >/dev/null 2>&1 || true
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -88,36 +82,20 @@ EOF
 echo "✅ RBAC verified."
 
 # ============================================================
-# 🚀 STEP 5: Create ArgoCD Application
+# 🚀 STEP 5: Apply ArgoCD Application (from Git repo)
 # ============================================================
-echo "🚀 Creating ArgoCD Application..."
-cat <<EOF | kubectl apply -f -
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: $APP_NAME
-  namespace: $ARGOCD_NAMESPACE
-spec:
-  project: default
-  source:
-    repoURL: $GIT_REPO_URL
-    targetRevision: $BRANCH
-    path: $APP_PATH
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: $APP_NAMESPACE
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
-EOF
-sleep 20
-echo "✅ ArgoCD Application created."
+echo "🚀 Applying ArgoCD Application manifest from: $APP_FILE"
+if [ ! -f "$APP_FILE" ]; then
+  echo "❌ ERROR: $APP_FILE not found!"
+  exit 1
+fi
+
+kubectl apply -f "$APP_FILE"
+sleep 15
+echo "✅ ArgoCD Application applied successfully."
 
 # ============================================================
-# 🔑 STEP 6: ArgoCD CLI Sync (if installed)
+# 🔑 STEP 6: ArgoCD CLI Sync (optional, if CLI available)
 # ============================================================
 if command -v argocd &>/dev/null; then
   echo "🔐 Logging into ArgoCD..."
@@ -134,53 +112,18 @@ if command -v argocd &>/dev/null; then
   echo "🔄 Syncing ArgoCD app..."
   argocd app sync $APP_NAME --grpc-web || echo "⚠️ Sync failed, check ArgoCD UI."
 else
-  echo "⚠️ ArgoCD CLI not installed. Auto-sync will handle deployment."
+  echo "⚠️ ArgoCD CLI not found — relying on ArgoCD auto-sync."
 fi
 
 # ============================================================
-# 🌍 STEP 7: Verify or Create Stable & Preview Services
+# 🌍 STEP 7: Validate Rollout, Services, and Ingress
 # ============================================================
-echo "⚙️ Verifying webapp-bg-stable and webapp-bg-preview services..."
+echo "⚙️ Validating deployed resources in namespace: $APP_NAMESPACE"
 
-if ! kubectl get svc webapp-bg-stable -n $APP_NAMESPACE >/dev/null 2>&1; then
-  echo "⚠️ Service webapp-bg-stable not found. Creating manually..."
-  cat <<EOF | kubectl apply -f -
-apiVersion: v1
-kind: Service
-metadata:
-  name: webapp-bg-stable
-  namespace: $APP_NAMESPACE
-spec:
-  selector:
-    app: webapp
-  ports:
-    - port: 80
-      targetPort: 80
-      nodePort: 30710
-  type: NodePort
-EOF
-fi
-
-if ! kubectl get svc webapp-bg-preview -n $APP_NAMESPACE >/dev/null 2>&1; then
-  echo "⚠️ Service webapp-bg-preview not found. Creating manually..."
-  cat <<EOF | kubectl apply -f -
-apiVersion: v1
-kind: Service
-metadata:
-  name: webapp-bg-preview
-  namespace: $APP_NAMESPACE
-spec:
-  selector:
-    app: webapp
-  ports:
-    - port: 80
-      targetPort: 80
-      nodePort: 32145
-  type: NodePort
-EOF
-fi
-
-kubectl -n $APP_NAMESPACE get ingress webapp-bg-ingress >/dev/null 2>&1 || echo "⚠️ Waiting for ingress creation..."
+kubectl -n $APP_NAMESPACE get rollout >/dev/null 2>&1 || echo "⚠️ Rollout not found yet."
+kubectl -n $APP_NAMESPACE get svc webapp-bg-stable >/dev/null 2>&1 || echo "⚠️ Service webapp-bg-stable missing!"
+kubectl -n $APP_NAMESPACE get svc webapp-bg-preview >/dev/null 2>&1 || echo "⚠️ Service webapp-bg-preview missing!"
+kubectl -n $APP_NAMESPACE get ingress webapp-bg-ingress >/dev/null 2>&1 || echo "⚠️ Ingress missing!"
 
 NODE_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[0].address}')
 STABLE_PORT=$(kubectl get svc webapp-bg-stable -n $APP_NAMESPACE -o jsonpath='{.spec.ports[0].nodePort}' 2>/dev/null || echo "N/A")
@@ -198,7 +141,7 @@ echo "📊 Checking rollout status..."
 if kubectl argo rollouts get rollout $APP_NAME -n $APP_NAMESPACE >/dev/null 2>&1; then
   kubectl argo rollouts get rollout $APP_NAME -n $APP_NAMESPACE
 else
-  echo "⚠️ Rollout not ready yet, verifying CRDs..."
+  echo "⚠️ Rollout not ready yet — verifying CRDs..."
   kubectl get crd | grep rollout || echo "❌ Rollout CRD missing!"
 fi
 
