@@ -6,13 +6,10 @@ metadata:
 spec:
   selector:
     app: webapp
-    version: blue # ✅ currently stable/live
   ports:
     - port: 80
       targetPort: 80
-      nodePort: 30710
   type: NodePort
-items: []
 ---
 apiVersion: v1
 kind: Service
@@ -22,10 +19,7 @@ metadata:
 spec:
   selector:
     app: webapp
-    version: blue
   ports:
     - port: 80
       targetPort: 80
-      nodePort: 32145
   type: NodePort
-items: []

@@ -110,6 +110,8 @@ spec:
     automated:
       prune: true
       selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
 EOF
 sleep 20
 echo "✅ ArgoCD Application created."
@@ -136,18 +138,53 @@ else
 fi
 
 # ============================================================
-# 🌍 STEP 7: Expose Stable & Preview Services
+# 🌍 STEP 7: Verify or Create Stable & Preview Services
 # ============================================================
-NODE_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[0].address}')
-for svc in stable preview; do
-  if ! kubectl get svc ${APP_NAME}-${svc} -n $APP_NAMESPACE >/dev/null 2>&1; then
-    echo "⚙️ Creating ${APP_NAME}-${svc} service..."
-    kubectl expose rollout ${APP_NAME} --name=${APP_NAME}-${svc} --port=80 --target-port=80 --type=NodePort -n $APP_NAMESPACE || true
-  fi
-done
+echo "⚙️ Verifying webapp-bg-stable and webapp-bg-preview services..."
 
-STABLE_PORT=$(kubectl get svc ${APP_NAME}-stable -n $APP_NAMESPACE -o jsonpath='{.spec.ports[0].nodePort}')
-PREVIEW_PORT=$(kubectl get svc ${APP_NAME}-preview -n $APP_NAMESPACE -o jsonpath='{.spec.ports[0].nodePort}')
+if ! kubectl get svc webapp-bg-stable -n $APP_NAMESPACE >/dev/null 2>&1; then
+  echo "⚠️ Service webapp-bg-stable not found. Creating manually..."
+  cat <<EOF | kubectl apply -f -
+apiVersion: v1
+kind: Service
+metadata:
+  name: webapp-bg-stable
+  namespace: $APP_NAMESPACE
+spec:
+  selector:
+    app: webapp
+  ports:
+    - port: 80
+      targetPort: 80
+      nodePort: 30710
+  type: NodePort
+EOF
+fi
+
+if ! kubectl get svc webapp-bg-preview -n $APP_NAMESPACE >/dev/null 2>&1; then
+  echo "⚠️ Service webapp-bg-preview not found. Creating manually..."
+  cat <<EOF | kubectl apply -f -
+apiVersion: v1
+kind: Service
+metadata:
+  name: webapp-bg-preview
+  namespace: $APP_NAMESPACE
+spec:
+  selector:
+    app: webapp
+  ports:
+    - port: 80
+      targetPort: 80
+      nodePort: 32145
+  type: NodePort
+EOF
+fi
+
+kubectl -n $APP_NAMESPACE get ingress webapp-bg-ingress >/dev/null 2>&1 || echo "⚠️ Waiting for ingress creation..."
+
+NODE_IP=$(kubectl get nodes -o jsonpath='{.items[0].status.addresses[0].address}')
+STABLE_PORT=$(kubectl get svc webapp-bg-stable -n $APP_NAMESPACE -o jsonpath='{.spec.ports[0].nodePort}' 2>/dev/null || echo "N/A")
+PREVIEW_PORT=$(kubectl get svc webapp-bg-preview -n $APP_NAMESPACE -o jsonpath='{.spec.ports[0].nodePort}' 2>/dev/null || echo "N/A")
 
 echo
 echo "🔵 Stable URL : http://$NODE_IP:$STABLE_PORT"
