@@ -22,11 +22,11 @@ spec:
     metadata:
       labels:
         app: webapp
-        version: blue # 🟢 Active version (flipped by CI)
+        version: green # 🟢 Active version (flipped by CI)
     spec:
       containers:
         - name: webapp
-          image: smitdarji/k8s:webapp_blue_3d44629 # 🔄 Updated dynamically by CI/CD (format: webapp_<color>_<sha>)
+          image: smitdarji/k8s:webapp_green_ace28ca # 🔄 Updated dynamically by CI/CD (format: webapp_<color>_<sha>)
           ports:
             - containerPort: 80
           readinessProbe:
