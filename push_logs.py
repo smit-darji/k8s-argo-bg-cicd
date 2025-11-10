@@ -12,19 +12,26 @@ LOKI_URL = os.environ.get(
 JOB_LABEL = "web-app-project"
 
 
-def push_to_loki(level: str, message: str, endpoint: str = None):
-    """Push log to Loki"""
-    level = str(level).upper().strip()
-    message = str(message).strip()
+def push_to_loki(level: str, message: str, endpoint: str = None, extra: dict = None):
+    """Push structured log to Loki."""
     timestamp = str(int(time.time() * 1e9))
-    labels = {"job": JOB_LABEL, "level": level}
-    if endpoint:
-        labels["endpoint"] = endpoint
+    labels = {"job": JOB_LABEL, "level": level.upper(), "endpoint": endpoint or "unknown"}
+
+    log_entry = {
+        "time": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "level": level.upper(),
+        "endpoint": endpoint,
+        "message": message,
+    }
+
+    # Merge extra info (like duration, status, method, etc.)
+    if extra:
+        log_entry.update(extra)
 
     payload = {
         "streams": [{
             "stream": labels,
-            "values": [[timestamp, message]]
+            "values": [[timestamp, json.dumps(log_entry)]]
         }]
     }
 
@@ -42,18 +49,30 @@ def push_to_loki(level: str, message: str, endpoint: str = None):
 
 
 def log_api(func):
-    """Decorator to log API call timing."""
+    """Decorator to log request + response time for APIs."""
     @wraps(func)
     def wrapper(*args, **kwargs):
         start_time = time.time()
-        response = func(*args, **kwargs)
-        duration_ms = (time.time() - start_time) * 1000
+        method = request.method
         endpoint = request.path
-        push_to_loki(
-            level="INFO",
-            message=f"{request.method} {endpoint} took {duration_ms:.2f}ms",
-            endpoint=endpoint
-        )
+        try:
+            response = func(*args, **kwargs)
+            status_code = response.status_code if hasattr(response, "status_code") else 200
+        except Exception as e:
+            status_code = 500
+            raise e
+        finally:
+            duration_ms = (time.time() - start_time) * 1000
+            push_to_loki(
+                "INFO",
+                f"{method} {endpoint} -> {status_code} in {duration_ms:.2f}ms",
+                endpoint=endpoint,
+                extra={
+                    "method": method,
+                    "status_code": status_code,
+                    "duration_ms": round(duration_ms, 2)
+                }
+            )
         return response
     return wrapper
 
@@ -67,7 +86,6 @@ def index():
 @app.route("/push_log", methods=["POST"])
 @log_api
 def push_log():
-    """Manual log push API"""
     data = request.get_json(force=True) or {}
     level = data.get("level", "INFO")
     message = data.get("message", f"Manual {level} log from UI")
@@ -77,22 +95,18 @@ def push_log():
 
 # --- 🔁 Automatic demo logger ---
 def auto_demo_logger(interval=30):
-    """Continuously push demo logs every 30 seconds."""
     while True:
         ts = time.strftime("%Y-%m-%d %H:%M:%S")
         msg = f"Auto demo log at {ts}"
         push_to_loki("INFO", msg, endpoint="/auto_log")
-        print(f"[AUTO LOG] {msg}")
         time.sleep(interval)
 
 
 def start_background_logger():
-    """Start the demo logger in a background thread."""
     thread = threading.Thread(target=auto_demo_logger, args=(30,), daemon=True)
     thread.start()
 
 
 if __name__ == "__main__":
-    # Start background auto logger before running Flask
     start_background_logger()
     app.run(host="0.0.0.0", port=80)
