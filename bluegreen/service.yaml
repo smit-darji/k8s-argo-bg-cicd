@@ -6,7 +6,7 @@ metadata:
 spec:
   selector:
     app: webapp
-    version: blue
+    version: green
   ports:
     - port: 80
       targetPort: 80
@@ -20,7 +20,7 @@ metadata:
 spec:
   selector:
     app: webapp
-    version: green
+    version: blue
   ports:
     - port: 80
       targetPort: 80
