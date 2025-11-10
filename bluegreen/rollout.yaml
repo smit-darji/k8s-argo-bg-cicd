@@ -5,7 +5,7 @@ metadata:
   namespace: webapp-bg
   labels:
     app: webapp
-    releaseColor: blue   # ⚙️ CI/CD pipeline flips this automatically between blue/green
+    releaseColor: blue # ⚙️ CI/CD pipeline flips this automatically between blue/green
 spec:
   replicas: 2
   revisionHistoryLimit: 2
@@ -14,19 +14,19 @@ spec:
       app: webapp
   strategy:
     blueGreen:
-      activeService: webapp-bg-stable      # 🌐 Stable (live) service
-      previewService: webapp-bg-preview    # 🧪 Preview (staging) service
-      autoPromotionEnabled: true           # ✅ Automatically promotes after tests
-      autoPromotionSeconds: 180            # ⏳ Delay before promotion
+      activeService: webapp-bg-stable # 🌐 Stable (live) service
+      previewService: webapp-bg-preview # 🧪 Preview (staging) service
+      autoPromotionEnabled: true # ✅ Automatically promotes after tests
+      autoPromotionSeconds: 180 # ⏳ Delay before promotion
   template:
     metadata:
       labels:
         app: webapp
-        version: green                     # 🟢 Active version (flipped by CI)
+        version: blue # 🟢 Active version (flipped by CI)
     spec:
       containers:
         - name: webapp
-          image: smitdarji/k8s:webapp_green_1b096c8  # 🔄 Updated dynamically by CI/CD (format: webapp_<color>_<sha>)
+          image: smitdarji/k8s:webapp_blue_3d44629 # 🔄 Updated dynamically by CI/CD (format: webapp_<color>_<sha>)
           ports:
             - containerPort: 80
           readinessProbe:
