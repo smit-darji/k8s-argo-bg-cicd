@@ -62,13 +62,11 @@ helm upgrade --install loki grafana/loki-stack \
   --set loki.storage.type=filesystem \
   --set loki.service.type=NodePort \
   --set loki.service.nodePort="${LOKI_NODEPORT}" \
-  --set loki.config.server.http_listen_port="${LOKI_PORT}" \
   --set loki.fullnameOverride="loki" \
   --set promtail.config.clients[0].url="http://loki.${MON_NS}.svc.cluster.local:${LOKI_PORT}/loki/api/v1/push" \
   --wait --timeout "${TIMEOUT}"
 
 echo "✅ Loki + Promtail installed."
-
 echo
 echo "============================================================"
 echo "📁 Configuring Grafana Datasources (Prometheus + Loki)"
